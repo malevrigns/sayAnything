@@ -67,11 +67,14 @@ async function fillFlutter(locator, value) {
 }
 
 async function back(page) {
-  await page
-    .getByRole('button', { name: /返回|Back/ })
-    .first()
-    .evaluate((node) => node.click());
-  await page.waitForTimeout(300);
+  const button = page.getByRole('button', { name: /返回|Back/ }).first();
+  if (await page.locator('video[src*="/api/v1/media/"]').count()) {
+    // Flutter's video platform-view semantics can cover the header in Web QA.
+    await button.evaluate((node) => node.click());
+  } else {
+    await button.click();
+  }
+  await page.waitForTimeout(350);
 }
 
 async function shot(page, name) {
@@ -197,7 +200,13 @@ async function shot(page, name) {
       category: '校园日常',
       clientId: `peer-${Date.now()}`,
     });
-    await page.getByRole('button', { name: '刷新广场' }).click();
+    try {
+      await page.getByRole('button', { name: '刷新广场' }).click();
+    } catch (error) {
+      await page.screenshot({path:path.join(artifacts,'media-navigation-failure.png')});
+      fs.writeFileSync(path.join(artifacts,'media-navigation-failure.txt'),await page.locator('body').ariaSnapshot());
+      throw error;
+    }
     await page.mouse.move(195, 550);
     await page.mouse.wheel(0, 900);
     await page

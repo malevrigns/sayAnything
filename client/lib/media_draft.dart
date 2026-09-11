@@ -12,8 +12,6 @@ String _randomKey() => List.generate(
   16,
   (_) => Random.secure().nextInt(256).toRadixString(16).padLeft(2, '0'),
 ).join();
-const _imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
-const _videoExtensions = ['mp4', 'webm'];
 
 class PendingMedia {
   final XFile file;
@@ -36,16 +34,18 @@ class MediaDraft extends ChangeNotifier {
   CancelToken? _cancel;
   MediaDraft(this.api);
   bool get isNotEmpty => _items.isNotEmpty;
-  static String? validateFile(String name, int size) {
+  String? validateFile(String name, int size) {
+    final policy = api.policy;
     final extension = name.toLowerCase().split('.').last;
-    if (!_imageExtensions.contains(extension) &&
-        !_videoExtensions.contains(extension)) {
-      return '支持 JPG、PNG、WebP 图片和 MP4、WebM 视频';
+    if (!policy.imageExtensions.contains(extension) &&
+        !policy.videoExtensions.contains(extension)) {
+      return '当前支持 ${policy.formatHint}';
     }
     if (size <= 0) return '不能发送空文件';
-    final image = _imageExtensions.contains(extension);
-    if (size > (image ? 10 : 50) * 1024 * 1024) {
-      return image ? '单张图片不能超过 10 MB' : '单个视频不能超过 50 MB';
+    final image = policy.imageExtensions.contains(extension);
+    final limit = image ? policy.maxImageBytes : policy.maxVideoBytes;
+    if (size > limit) {
+      return '${image ? "单张图片" : "单个视频"}不能超过 ${formatMediaSize(limit)}';
     }
     return null;
   }
@@ -61,24 +61,15 @@ class MediaDraft extends ChangeNotifier {
     _notify();
     try {
       final files = await openFiles(
-        acceptedTypeGroups: const [
+        acceptedTypeGroups: [
           XTypeGroup(
             label: '图片与视频',
-            extensions: ['jpg', 'jpeg', 'png', 'webp', 'mp4', 'webm'],
-            mimeTypes: [
-              'image/jpeg',
-              'image/png',
-              'image/webp',
-              'video/mp4',
-              'video/webm',
+            extensions: [
+              ...api.policy.imageExtensions,
+              ...api.policy.videoExtensions,
             ],
-            uniformTypeIdentifiers: [
-              'public.jpeg',
-              'public.png',
-              'org.webmproject.webp',
-              'public.mpeg-4',
-              'org.webmproject.webm',
-            ],
+            mimeTypes: const ['image/*', 'video/*'],
+            uniformTypeIdentifiers: const ['public.image', 'public.movie'],
           ),
         ],
       );
@@ -96,8 +87,8 @@ class MediaDraft extends ChangeNotifier {
     final errors = <String>[];
     for (final file in files) {
       if (_disposed) return;
-      if (_items.length >= 4) {
-        errors.add('每条消息最多 4 个附件');
+      if (_items.length >= api.policy.maxAttachments) {
+        errors.add('每条消息最多 ${api.policy.maxAttachments} 个附件');
         break;
       }
       final size = await file.length();
@@ -106,11 +97,12 @@ class MediaDraft extends ChangeNotifier {
         errors.add(issue);
         continue;
       }
-      if (_items.fold<int>(0, (n, f) => n + f.size) + size > 50 * 1024 * 1024) {
-        errors.add('附件总大小不能超过 50 MB');
+      if (_items.fold<int>(0, (n, f) => n + f.size) + size >
+          api.policy.maxTotalBytes) {
+        errors.add('附件总大小不能超过 ${formatMediaSize(api.policy.maxTotalBytes)}');
         continue;
       }
-      final image = _imageExtensions.contains(
+      final image = api.policy.imageExtensions.contains(
         file.name.toLowerCase().split('.').last,
       );
       final preview = image ? await file.readAsBytes() : null;
@@ -371,7 +363,10 @@ class MediaAddButton extends StatelessWidget {
     builder: (context, _) => IconButton(
       tooltip: '添加图片或视频',
       onPressed:
-          disabled || draft.busy || draft.choosing || draft.items.length >= 4
+          disabled ||
+              draft.busy ||
+              draft.choosing ||
+              draft.items.length >= draft.api.policy.maxAttachments
           ? null
           : draft.choose,
       icon: draft.choosing

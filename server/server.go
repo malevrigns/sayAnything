@@ -74,8 +74,6 @@ var roomSeeds = []struct{ id, name, desc, emoji string }{
 	{"music", "耳机分你一半", "分享让你单曲循环的歌", "🎧"},
 }
 
-var postCategories = map[string]bool{"校园日常": true, "心事树洞": true, "搭子集合": true, "恋爱碎碎念": true, "学习交流": true}
-
 const schema = `
 PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;
 CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,alias TEXT NOT NULL,campus TEXT NOT NULL,avatar INTEGER NOT NULL,allow_dm INTEGER NOT NULL DEFAULT 1,created_at TEXT NOT NULL);
@@ -147,6 +145,7 @@ func (s *Server) Handler() http.Handler { return s.security(s.mux) }
 func (s *Server) routes() {
 	s.mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) { writeJSON(w, 200, map[string]any{"ok": true}) })
 	s.mux.HandleFunc("POST /api/v1/session", s.session)
+	s.mux.HandleFunc("GET /api/v1/config", s.policy)
 	s.mux.Handle("GET /api/v1/me", s.auth(http.HandlerFunc(s.me)))
 	s.mux.Handle("PATCH /api/v1/me", s.auth(http.HandlerFunc(s.me)))
 	s.mux.Handle("DELETE /api/v1/me", s.auth(http.HandlerFunc(s.me)))
@@ -236,7 +235,7 @@ func (s *Server) security(next http.Handler) http.Handler {
 		}
 		limit := int64(1 << 20)
 		if r.Method == "POST" && r.URL.Path == "/api/v1/media" {
-			limit = 50<<20 + 1<<20
+			limit = maxVideoBytes + 1<<20
 		}
 		r.Body = http.MaxBytesReader(w, r.Body, limit)
 		next.ServeHTTP(w, r)

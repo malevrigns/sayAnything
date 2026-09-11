@@ -63,10 +63,11 @@ if ($report) {
 
 ## API 约定
 
-业务接口前缀 `/api/v1`，JSON 请求与响应，错误为 `{"error":"中文提示"}`。除了创建会话与公共资源，都要求 `Authorization: Bearer <token>`。正文按 Unicode 字符验证：帖子最多 1000 字，评论及消息 2000 字，学校 80 字。昵称 API 上限 40 字，客户端输入上限 24 字。请求体大小上限由服务端统一限制。成功删除返回 204。
+业务接口前缀 `/api/v1`，JSON 请求与响应，错误为 `{"error":"中文提示"}`。除了创建会话与公共资源，都要求 `Authorization: Bearer <token>`。正文按 Unicode 字符验证：当前默认帖子最多 1000 字，评论及消息 2000 字，学校 80 字，昵称 40 字。客户端从配置接口读取上限；请求体大小由服务端统一限制。成功删除返回 204。
 
 | 方法与路径 | 请求/行为 |
 | --- | --- |
+| GET /config | 无需登录；Go 提供分类、文字上限、媒体格式与数量/大小限制，客户端只用作显示和输入提示 |
 | POST /session | `{campus}` → `{token,user}` |
 | POST /media | multipart 单个 `file`；可带 `X-Upload-Id` 幂等键，返回媒体对象 |
 | POST /media/{id}/ticket | 获取 15 分钟临时访问链接 `{url,expiresAt}` |
@@ -87,7 +88,7 @@ if ($report) {
 | GET /rooms/{id}/messages | 最新窗口；可传 `after` 时间戳 |
 | POST /rooms/{id}/messages | `{body}` |
 | POST /conversations | `{postId}`，创建或打开与作者的私聊 |
-| GET /conversations | 会话与未读数 |
+| GET /conversations | 会话与未读数；`q` 搜索昵称及全部历史消息，结果含 `matchSnippet`，不改变已读状态 |
 | GET /conversations/{id}/messages | 最新窗口；可传 `after`；读取已送达消息后更新已读 |
 | POST /conversations/{id}/messages | `{body}`；检查双方屏蔽和接收设置 |
 | POST /reports | `{targetType,targetId,reason}` |
@@ -105,7 +106,9 @@ if ($report) {
 
 备份和恢复必须同时覆盖数据库与 `MEDIA_DIR`；最简单的方法是停止服务后复制两者。反向代理需要允许至少 51 MiB 请求体及适当的上传超时。不要把媒体目录映射为公开静态目录。删除内容或身份会清理关联附件；文件删除失败时通过持久化回收队列重试。
 
-公共接口没有 `/api/v1` 前缀：`GET /health`、`GET /api/downloads`。下载只允许 `sayanything-android.apk` 和 `sayanything-windows.zip` 两个文件名，不开放任意目录浏览。官网读取下载状态；文件不存在时禁用下载按钮。
+其他公共接口没有 `/api/v1` 前缀：`GET /health`、`GET /api/downloads`。下载只允许 `sayanything-android.apk`、`sayanything-android-arm64.apk`、`sayanything-android-armv7.apk`、`sayanything-android-x64.apk` 和 `sayanything-windows.zip`，不开放任意目录浏览。官网读取下载状态；文件不存在时禁用链接。
+
+1.3 的搜索使用服务端 Unicode 小写转换与字面子串匹配，`%` 和 `_` 不作为通配符。结果限制为最近 200 个匹配会话，摘要最多 160 个 Unicode 字符；空 `q` 保持原会话列表契约。参与者范围与双方屏蔽关系在 Go 中检查。升级时先部署 Go，再升级客户端；配置值与写入校验共用 `server/policy.go` 中的定义。
 
 ## 安卓正式签名
 

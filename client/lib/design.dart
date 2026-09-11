@@ -9,7 +9,6 @@ const sage = Color(0xFF292929);
 const peach = Color(0xFFBBBBBB);
 const ink = Colors.white;
 const muted = Color(0xFF999999);
-const categories = ['全部', '校园日常', '心事树洞', '搭子集合', '恋爱碎碎念', '学习交流'];
 Color gray(double lightness, [double opacity = 1]) =>
     HSLColor.fromAHSL(opacity, 0, 0, lightness / 100).toColor();
 

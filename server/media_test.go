@@ -79,7 +79,7 @@ func (a *testAPI) uploadKey(name string, data []byte, key string) *httptest.Resp
 }
 
 func firstCategory() string {
-	for k := range postCategories {
+	for _, k := range postCategories {
 		return k
 	}
 	return ""

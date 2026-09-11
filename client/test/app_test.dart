@@ -7,11 +7,12 @@ import 'package:sayanything/chat.dart';
 import 'package:sayanything/feed.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'policy_fixture.dart';
 
 class SlowApi extends Api {
   final sent = Completer<dynamic>();
   final calls = <String>[];
-  SlowApi() {
+  SlowApi() : super(serverPolicy: testPolicy()) {
     user = {
       'id': 'u1',
       'alias': '晚风',
@@ -23,6 +24,7 @@ class SlowApi extends Api {
   @override
   Future<dynamic> call(String method, String path, [Data? data]) async {
     calls.add('$method $path');
+    if (path == '/config') return policyJson();
     if (path == '/me') return user;
     if (method == 'POST') return sent.future;
     return <Data>[];
@@ -117,6 +119,6 @@ void main() {
     api.sent.complete({'token': 'replacement', 'user': api.user});
     await api.connect('http://localhost:8080', '测试校园');
     expect(api.token, 'existing-token');
-    expect(api.calls, ['GET /me']);
+    expect(api.calls, ['GET /config', 'GET /me']);
   });
 }

@@ -258,8 +258,7 @@ class _InboxPageState extends State<InboxPage> with WidgetsBindingObserver {
               : () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) =>
-                        _SearchPage(api: widget.api, items: conversations!),
+                    builder: (_) => _SearchPage(api: widget.api),
                   ),
                 ).then((_) => load()),
           tooltip: '搜索聊天记录',
@@ -407,25 +406,65 @@ class _InboxPageState extends State<InboxPage> with WidgetsBindingObserver {
 
 class _SearchPage extends StatefulWidget {
   final Api api;
-  final List<Data> items;
-  const _SearchPage({required this.api, required this.items});
+  const _SearchPage({required this.api});
   @override
   State<_SearchPage> createState() => _SearchPageState();
 }
 
 class _SearchPageState extends State<_SearchPage> {
   String query = '';
+  List<Data> matches = [];
+  String? error;
+  bool loading = false;
+  Timer? debounce;
+  int revision = 0;
+  final input = TextEditingController();
+
+  void changeQuery(String value) {
+    debounce?.cancel();
+    final current = ++revision;
+    setState(() {
+      query = value;
+      matches = [];
+      error = null;
+      loading = value.trim().isNotEmpty;
+    });
+    if (loading) {
+      debounce = Timer(
+        const Duration(milliseconds: 250),
+        () => search(current),
+      );
+    }
+  }
+
+  Future<void> search(int current) async {
+    try {
+      final results = await widget.api.list(
+        '/conversations?q=${Uri.encodeComponent(query.trim())}',
+      );
+      if (!mounted || current != revision) return;
+      setState(() {
+        matches = results;
+        loading = false;
+      });
+    } catch (e) {
+      if (!mounted || current != revision) return;
+      setState(() {
+        error = e.toString();
+        loading = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    debounce?.cancel();
+    input.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final needle = query.trim().toLowerCase();
-    final matches = widget.items
-        .where(
-          (item) =>
-              needle.isEmpty ||
-              '${item['alias'] ?? ''}'.toLowerCase().contains(needle) ||
-              '${item['lastMessage'] ?? ''}'.toLowerCase().contains(needle),
-        )
-        .toList();
     return Scaffold(
       appBar: AppBar(title: const Text('搜索聊天记录')),
       body: Center(
@@ -441,17 +480,43 @@ class _SearchPageState extends State<_SearchPage> {
                   padding: const EdgeInsets.symmetric(horizontal: 14),
                   child: TextField(
                     autofocus: true,
-                    onChanged: (value) => setState(() => query = value),
-                    decoration: const InputDecoration(
-                      icon: Icon(LucideIcons.search, size: 19),
-                      hintText: '搜索昵称或最近消息',
+                    controller: input,
+                    onChanged: changeQuery,
+                    decoration: InputDecoration(
+                      icon: const Icon(LucideIcons.search, size: 19),
+                      hintText: '搜索昵称或聊天内容',
+                      suffixIcon: query.isEmpty
+                          ? null
+                          : IconButton(
+                              tooltip: '清空搜索',
+                              icon: const Icon(LucideIcons.x, size: 18),
+                              onPressed: () {
+                                input.clear();
+                                changeQuery('');
+                              },
+                            ),
                       border: InputBorder.none,
                     ),
                   ),
                 ),
                 const SizedBox(height: 14),
                 Expanded(
-                  child: matches.isEmpty
+                  child: loading
+                      ? const Center(child: CircularProgressIndicator())
+                      : error != null
+                      ? _ErrorPane(
+                          message: error!,
+                          onRetry: () async {
+                            changeQuery(query);
+                          },
+                        )
+                      : query.trim().isEmpty
+                      ? const EmptyState(
+                          '搜索你的聊天',
+                          '输入昵称或聊天中的关键词。',
+                          icon: LucideIcons.search,
+                        )
+                      : matches.isEmpty
                       ? const EmptyState(
                           '没有找到相关聊天',
                           '换个昵称或消息关键词试试。',
@@ -471,7 +536,7 @@ class _SearchPageState extends State<_SearchPage> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               subtitle: Text(
-                                _preview(item),
+                                item['matchSnippet'] ?? _preview(item),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -861,7 +926,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                       controller: body,
                       minLines: 1,
                       maxLines: 5,
-                      maxLength: 2000,
+                      maxLength: widget.api.policy.messageCharacters,
                       textInputAction: TextInputAction.newline,
                       decoration: const InputDecoration(
                         hintText: '输入消息…',

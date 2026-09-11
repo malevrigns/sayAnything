@@ -196,7 +196,7 @@ class ProfilePage extends StatelessWidget {
           const SizedBox(height: 23),
           const Center(
             child: Text(
-              'sayAnything · 1.2.0',
+              'sayAnything · 1.3.0',
               style: TextStyle(
                 fontSize: 12,
                 color: Colors.white30,
@@ -217,7 +217,7 @@ class ProfilePage extends StatelessWidget {
         title: const Text('修改匿名昵称'),
         content: TextField(
           controller: controller,
-          maxLength: 24,
+          maxLength: api.policy.aliasCharacters,
           autofocus: true,
           decoration: const InputDecoration(hintText: '取一个只属于这里的名字'),
         ),
@@ -534,7 +534,7 @@ class AboutPage extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         const Text(
-          '1.2.0',
+          '1.3.0',
           textAlign: TextAlign.center,
           style: TextStyle(color: Colors.white38, fontSize: 12),
         ),
@@ -548,7 +548,7 @@ class AboutPage extends StatelessWidget {
         for (final item in [
           (
             '怎样发送图片或视频？',
-            '点击输入栏旁的加号选择附件，可预览、移除，确认发送后才上传。支持 JPG、PNG、WebP 图片（单张 10 MB）及 MP4、WebM 视频（单个 50 MB）；每条最多 4 个附件，总计不超过 50 MB。视频能否播放取决于设备支持的编码，推荐 H.264 / AAC 的 MP4。',
+            '点击输入栏旁的加号选择附件，可预览、移除，确认发送后才上传。可用格式、数量与大小上限由当前校园服务提供，选择时会提示。视频能否播放取决于设备支持的编码，推荐 H.264 / AAC 的 MP4。',
           ),
           ('这里的聊天对象是谁？', '同一校园中使用这项服务的匿名用户。你可以在校园广场交流，也可以进入话题房间，或从帖子详情发起私聊。'),
           (

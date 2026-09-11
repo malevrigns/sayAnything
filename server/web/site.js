@@ -1,21 +1,32 @@
 'use strict';
-const downloadLinks={android:document.querySelector('#android-download'),windows:document.querySelector('#windows-download')};
-for(const link of Object.values(downloadLinks)){link.dataset.url=link.getAttribute('href');link.removeAttribute('href');link.setAttribute('aria-disabled','true');}
-async function checkDownloads(){
-  const status=document.querySelector('#download-status');
-  try{
-    const response=await fetch('/api/downloads',{signal:AbortSignal.timeout(8000)});
-    if(!response.ok)throw new Error('unavailable');
-    const data=await response.json();
-    for(const [platform,link]of Object.entries(downloadLinks)){
-      const available=data[platform]===true;link.setAttribute('aria-disabled',String(!available));
-      if(available)link.setAttribute('href',link.dataset.url);
-      link.querySelector('small').textContent=available?(platform==='android'?'安卓安装包 · v1.2.0':'Windows x64 · v1.2.0'):'安装包准备中';
-    }
-    status.textContent=data.android||data.windows?'自签测试发行版。安装后，连接你的校园服务即可使用。':'安装包准备中，发布后可在这里下载。';
-  }catch{
-    for(const link of Object.values(downloadLinks))link.querySelector('small').textContent='暂时无法检查';
-    status.textContent='暂时无法连接下载服务，请稍后刷新重试。';
+const downloadLinks = {android:document.querySelector('#android-download'),windows:document.querySelector('#windows-download')};
+const variantLinks = [...document.querySelectorAll('[data-download-platform]')];
+for (const link of [...Object.values(downloadLinks), ...variantLinks]) {
+  link.dataset.url = link.getAttribute('href');
+  link.removeAttribute('href');
+  link.setAttribute('aria-disabled','true');
+}
+function setDownload(link, available, url = link.dataset.url) {
+  link.setAttribute('aria-disabled', String(!available));
+  if (available) link.setAttribute('href', url); else link.removeAttribute('href');
+}
+async function checkDownloads() {
+  const status = document.querySelector('#download-status');
+  try {
+    const response = await fetch('/api/downloads', {signal:AbortSignal.timeout(8000)});
+    if (!response.ok) throw new Error('unavailable');
+    const data = await response.json();
+    const arm64 = data.androidArm64 === true;
+    const android = arm64 || data.android === true;
+    setDownload(downloadLinks.android, android, arm64 ? '/downloads/sayanything-android-arm64.apk' : downloadLinks.android.dataset.url);
+    setDownload(downloadLinks.windows, data.windows === true);
+    downloadLinks.android.querySelector('small').textContent = android ? `${arm64 ? 'Android 64 位' : '安卓通用版'} · v1.3.0` : '安装包准备中';
+    downloadLinks.windows.querySelector('small').textContent = data.windows ? 'Windows x64 · v1.3.0' : '安装包准备中';
+    for (const link of variantLinks) setDownload(link, data[link.dataset.downloadPlatform] === true);
+    status.textContent = android || data.windows ? '自签测试发行版。安装后，连接你的校园服务即可使用。' : '安装包准备中，发布后可在这里下载。';
+  } catch {
+    for (const link of Object.values(downloadLinks)) link.querySelector('small').textContent = '暂时无法检查';
+    status.textContent = '暂时无法连接下载服务，请稍后刷新重试。';
   }
 }
 checkDownloads();

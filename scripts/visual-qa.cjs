@@ -36,8 +36,14 @@ async function revealPage(page){
   const availability=await(await fetch(origin+'/api/downloads')).json();
   for(const platform of ['android','windows']){
     const link=page.locator('#'+platform+'-download');
-    assert.equal(await link.getAttribute('aria-disabled'),String(!availability[platform]));
-    if(availability[platform]){const href=await link.getAttribute('href');const response=await fetch(origin+href,{method:'HEAD'});assert.equal(response.status,200);assert(Number(response.headers.get('content-length'))>1000000);}
+    const available=platform==='android'?(availability.androidArm64||availability.android):availability[platform];
+    assert.equal(await link.getAttribute('aria-disabled'),String(!available));
+    if(available){const href=await link.getAttribute('href');if(platform==='android'&&availability.androidArm64)assert(href.endsWith('-arm64.apk'));const response=await fetch(origin+href,{method:'HEAD'});assert.equal(response.status,200);assert(Number(response.headers.get('content-length'))>1000000);}
+  }
+  for(const link of await page.locator('[data-download-platform]').all()){
+    const key=await link.getAttribute('data-download-platform');
+    assert.equal(await link.getAttribute('aria-disabled'),String(!availability[key]));
+    if(availability[key]){const href=await link.getAttribute('href');assert.equal((await fetch(origin+href,{method:'HEAD'})).status,200);}
   }
   for(const width of [390,360]){
    await page.setViewportSize({width,height:844});await page.goto(origin);await revealPage(page);

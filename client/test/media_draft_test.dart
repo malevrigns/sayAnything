@@ -4,8 +4,10 @@ import 'package:sayanything/api.dart';
 import 'package:sayanything/media_draft.dart';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'policy_fixture.dart';
 
 class UploadApi extends Api {
+  UploadApi() : super(serverPolicy: testPolicy());
   int uploads = 0;
   bool failSecond = true;
   @override
@@ -62,11 +64,13 @@ void main() {
   test(
     'media limits reject unsupported types and oversize files before reading',
     () {
-      expect(MediaDraft.validateFile('a.svg', 100), isNotNull);
-      expect(MediaDraft.validateFile('a.jpg', 11 * 1024 * 1024), isNotNull);
-      expect(MediaDraft.validateFile('a.mp4', 51 * 1024 * 1024), isNotNull);
-      expect(MediaDraft.validateFile('a.webp', 100), isNull);
-      expect(MediaDraft.validateFile('a.webm', 100), isNull);
+      final draft = MediaDraft(UploadApi());
+      expect(draft.validateFile('a.svg', 100), isNotNull);
+      expect(draft.validateFile('a.jpg', 11 * 1024 * 1024), isNotNull);
+      expect(draft.validateFile('a.mp4', 51 * 1024 * 1024), isNotNull);
+      expect(draft.validateFile('a.webp', 100), isNull);
+      expect(draft.validateFile('a.webm', 100), isNull);
+      draft.dispose();
     },
   );
   test(

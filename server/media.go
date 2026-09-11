@@ -23,11 +23,7 @@ import (
 	_ "golang.org/x/image/webp"
 )
 
-const (
-	maxImageBytes = int64(10 << 20)
-	maxVideoBytes = int64(50 << 20)
-	pendingQuota  = int64(100 << 20)
-)
+const pendingQuota = int64(100 << 20)
 
 type Media struct {
 	ID       string `json:"id"`
@@ -169,8 +165,9 @@ func (s *Server) mediaUpload(w http.ResponseWriter, r *http.Request) {
 var errTooLarge = errors.New("too large")
 
 func (s *Server) validateMedia(_ *http.Request, data []byte) (string, string, []byte, int, int, error) {
-	ct := http.DetectContentType(data)
-	if ct == "image/jpeg" || ct == "image/png" || ct == "image/webp" {
+	format := detectMediaFormat(data)
+	ct := format.mime
+	if format.kind == "image" {
 		if int64(len(data)) > maxImageBytes {
 			return "", "", nil, 0, 0, errTooLarge
 		}
@@ -195,17 +192,11 @@ func (s *Server) validateMedia(_ *http.Request, data []byte) (string, string, []
 		bounds := im.Bounds()
 		return "image", ct, b.Bytes(), bounds.Dx(), bounds.Dy(), nil
 	}
-	if isMP4(data) {
+	if format.kind == "video" {
 		if int64(len(data)) > maxVideoBytes {
 			return "", "", nil, 0, 0, errTooLarge
 		}
-		return "video", "video/mp4", data, 0, 0, nil
-	}
-	if isWebM(data) {
-		if int64(len(data)) > maxVideoBytes {
-			return "", "", nil, 0, 0, errTooLarge
-		}
-		return "video", "video/webm", data, 0, 0, nil
+		return "video", ct, data, 0, 0, nil
 	}
 	return "", "", nil, 0, 0, errors.New("unsupported")
 }
@@ -365,7 +356,7 @@ func mediaHash(body string, media []string, extra string) string {
 	return hex.EncodeToString(h[:])
 }
 func validateCreate(body string, max int, media []string, client string) bool {
-	return (body != "" && runeLen(body) <= max || body == "" && len(media) > 0) && len(media) <= 4 && len(client) <= 80
+	return (body != "" && runeLen(body) <= max || body == "" && len(media) > 0) && len(media) <= maxAttachments && len(client) <= 80
 }
 
 var errMediaBind = errors.New("media cannot be bound")
@@ -383,7 +374,7 @@ func bindMedia(tx *sql.Tx, user, targetType, target string, ids []string) error 
 			return errMediaBind
 		}
 		total += size
-		if total > maxVideoBytes {
+		if total > maxTotalBytes {
 			return errTooLarge
 		}
 		res, err := tx.Exec(`INSERT INTO attachments(media_id,target_type,target_id,position) SELECT id,?,?,? FROM media WHERE id=? AND owner_id=? AND NOT EXISTS(SELECT 1 FROM attachments WHERE media_id=?)`, targetType, target, i, id, user, id)

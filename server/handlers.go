@@ -24,7 +24,7 @@ func (s *Server) session(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	in.Campus = strings.TrimSpace(in.Campus)
-	if !validText(in.Campus, 80) {
+	if !validText(in.Campus, maxCampusCharacters) {
 		fail(w, 400, "学校名称需为 1 至 80 个字符")
 		return
 	}
@@ -63,7 +63,7 @@ func (s *Server) me(w http.ResponseWriter, r *http.Request) {
 		}
 		if in.Alias != nil {
 			*in.Alias = strings.TrimSpace(*in.Alias)
-			if !validText(*in.Alias, 40) {
+			if !validText(*in.Alias, maxAliasCharacters) {
 				fail(w, 400, "alias must be 1-40 characters")
 				return
 			}
@@ -101,7 +101,7 @@ func (s *Server) posts(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		in.Body = strings.TrimSpace(in.Body)
-		if !validateCreate(in.Body, 1000, in.MediaIDs, in.ClientID) || !validCategory(in.Category) {
+		if !validateCreate(in.Body, maxPostCharacters, in.MediaIDs, in.ClientID) || !validCategory(in.Category) {
 			fail(w, 400, "invalid post")
 			return
 		}
@@ -199,7 +199,12 @@ func (s *Server) posts(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, out)
 }
 func validCategory(v string) bool {
-	return postCategories[v]
+	for _, category := range postCategories {
+		if v == category {
+			return true
+		}
+	}
+	return false
 }
 func (s *Server) getPost(r *http.Request, id string) (Post, error) {
 	u := current(r)
@@ -274,7 +279,7 @@ func (s *Server) comments(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		in.Body = strings.TrimSpace(in.Body)
-		if !validateCreate(in.Body, 2000, in.MediaIDs, in.ClientID) {
+		if !validateCreate(in.Body, maxMessageCharacters, in.MediaIDs, in.ClientID) {
 			fail(w, 400, "invalid comment")
 			return
 		}
@@ -388,7 +393,7 @@ func (s *Server) roomMessages(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		in.Body = strings.TrimSpace(in.Body)
-		if !validateCreate(in.Body, 2000, in.MediaIDs, in.ClientID) {
+		if !validateCreate(in.Body, maxMessageCharacters, in.MediaIDs, in.ClientID) {
 			fail(w, 400, "invalid message")
 			return
 		}
@@ -524,22 +529,53 @@ func (s *Server) conversations(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 201, c)
 		return
 	}
-	rows, e := s.db.QueryContext(r.Context(), `SELECT id FROM conversations WHERE (user1_id=? OR user2_id=?) ORDER BY updated_at DESC`, u.ID, u.ID)
+	search := r.URL.Query().Get("q")
+	query := `SELECT id,'' FROM conversations WHERE (user1_id=? OR user2_id=?) ORDER BY updated_at DESC`
+	args := []any{u.ID, u.ID}
+	if search != "" {
+		// instr treats %, _ and all other query characters literally. Search all
+		// history, returning only a bounded excerpt of the newest matching body.
+		query = `SELECT id,snippet FROM (
+			SELECT c.id,c.updated_at,COALESCE(
+				(SELECT substr(m.body,max(instr(sayanything_lower(m.body),?)-40,1),160) FROM dm_messages m
+				 WHERE m.conversation_id=c.id AND instr(sayanything_lower(m.body),?)>0 ORDER BY m.created_at DESC LIMIT 1),
+				CASE WHEN instr(sayanything_lower(peer.alias),?)>0 THEN peer.alias END) AS snippet
+			FROM conversations c JOIN users peer ON peer.id=CASE WHEN c.user1_id=? THEN c.user2_id ELSE c.user1_id END
+			WHERE (c.user1_id=? OR c.user2_id=?) AND NOT EXISTS(
+				SELECT 1 FROM blocks WHERE (blocker_id=? AND blocked_id=peer.id) OR (blocker_id=peer.id AND blocked_id=?))
+		) WHERE snippet IS NOT NULL ORDER BY updated_at DESC LIMIT 200`
+		folded := strings.ToLower(search)
+		args = []any{folded, folded, folded, u.ID, u.ID, u.ID, u.ID, u.ID}
+	}
+	rows, e := s.db.QueryContext(r.Context(), query, args...)
 	if e != nil {
 		fail(w, 500, "could not list conversations")
 		return
 	}
 	ids := []string{}
+	snippets := map[string]string{}
 	for rows.Next() {
-		var id string
-		if rows.Scan(&id) == nil {
-			ids = append(ids, id)
+		var id, snippet string
+		if e = rows.Scan(&id, &snippet); e != nil {
+			rows.Close()
+			fail(w, 500, "could not list conversations")
+			return
 		}
+		ids = append(ids, id)
+		snippets[id] = snippet
 	}
+	e = rows.Err()
 	rows.Close()
+	if e != nil {
+		fail(w, 500, "could not list conversations")
+		return
+	}
 	out := []map[string]any{}
 	for _, id := range ids {
 		if c, e := s.conversation(r, u, id); e == nil {
+			if search != "" {
+				c["matchSnippet"] = snippets[id]
+			}
 			out = append(out, c)
 		}
 	}
@@ -615,7 +651,7 @@ func (s *Server) dmMessages(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		in.Body = strings.TrimSpace(in.Body)
-		if !validateCreate(in.Body, 2000, in.MediaIDs, in.ClientID) {
+		if !validateCreate(in.Body, maxMessageCharacters, in.MediaIDs, in.ClientID) {
 			fail(w, 400, "invalid message")
 			return
 		}
@@ -861,16 +897,36 @@ func (s *Server) adminReports(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, 200, map[string]bool{"ok": true})
 }
+
+var downloadFiles = map[string]string{
+	"android":      "sayanything-android.apk",
+	"androidArm64": "sayanything-android-arm64.apk",
+	"androidArmv7": "sayanything-android-armv7.apk",
+	"androidX64":   "sayanything-android-x64.apk",
+	"windows":      "sayanything-windows.zip",
+}
+
 func (s *Server) downloads(w http.ResponseWriter, r *http.Request) {
 	exists := func(n string) bool {
 		st, e := os.Stat(filepath.Join(s.cfg.DownloadDir, n))
 		return e == nil && !st.IsDir()
 	}
-	writeJSON(w, 200, map[string]bool{"android": exists("sayanything-android.apk"), "windows": exists("sayanything-windows.zip")})
+	available := map[string]bool{}
+	for key, file := range downloadFiles {
+		available[key] = exists(file)
+	}
+	writeJSON(w, 200, available)
 }
 func (s *Server) downloadFile(w http.ResponseWriter, r *http.Request) {
 	n := r.PathValue("file")
-	if n != "sayanything-android.apk" && n != "sayanything-windows.zip" {
+	allowed := false
+	for _, file := range downloadFiles {
+		if n == file {
+			allowed = true
+			break
+		}
+	}
+	if !allowed {
 		fail(w, 404, "download not found")
 		return
 	}

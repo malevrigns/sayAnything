@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dio/dio.dart' as dio;
 import 'package:file_selector/file_selector.dart';
+import 'policy.dart';
 
 typedef Data = Map<String, dynamic>;
 
@@ -29,7 +30,9 @@ class Api extends ChangeNotifier {
   bool reduceMotion = false;
   double textScale = 1;
   final Map<String, ({String url, DateTime expires})> _mediaTickets = {};
-  Api() {
+  AppPolicy? serverPolicy;
+  AppPolicy get policy => serverPolicy ?? (throw ApiError('请先连接校园服务以获取应用设置'));
+  Api({this.serverPolicy}) {
     if (origin.isEmpty) {
       origin = !kIsWeb && defaultTargetPlatform == TargetPlatform.android
           ? 'http://10.0.2.2:8080'
@@ -58,6 +61,7 @@ class Api extends ChangeNotifier {
     token = await _vault.read(key: 'session:$origin');
     if (token != null) {
       try {
+        await loadPolicy();
         user = Data.from(await call('GET', '/me'));
       } on ApiError catch (e) {
         if (e.status == 401) {
@@ -77,6 +81,9 @@ class Api extends ChangeNotifier {
       throw ApiError('请输入有效的服务地址，例如 https://chat.example.com');
     }
     origin = url;
+    serverPolicy = null;
+    token = null;
+    await loadPolicy();
     token = await _vault.read(key: 'session:$origin');
     if (token != null) {
       try {
@@ -139,6 +146,19 @@ class Api extends ChangeNotifier {
   Future<List<Data>> list(String path) async =>
       (await call('GET', path) as List).map((e) => Data.from(e)).toList();
 
+  Future<void> loadPolicy() async {
+    try {
+      serverPolicy = AppPolicy.fromJson(
+        Data.from(await call('GET', '/config')),
+      );
+    } on ApiError catch (e) {
+      if (e.status == 404) throw ApiError('校园服务需要升级，请先更新 Go 后端至 1.3 或更高版本');
+      rethrow;
+    } catch (_) {
+      throw ApiError('校园服务的应用设置无效，请联系服务管理员');
+    }
+  }
+
   Future<Data> uploadMedia(
     XFile file, {
     String? uploadId,
@@ -146,7 +166,7 @@ class Api extends ChangeNotifier {
     dio.CancelToken? cancelToken,
   }) async {
     final length = await file.length();
-    if (length > 50 * 1024 * 1024) throw ApiError('文件不能超过 50 MB');
+    if (length > policy.maxTotalBytes) throw ApiError('文件超过当前校园服务的上传限制');
     final capturedToken = token;
     final client = dio.Dio(
       dio.BaseOptions(

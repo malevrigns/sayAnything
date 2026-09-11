@@ -242,7 +242,6 @@ class _WelcomeState extends State<Welcome> {
                 TextField(
                   controller: campus,
                   enabled: !busy,
-                  maxLength: 80,
                   textInputAction: TextInputAction.done,
                   onSubmitted: (_) => join(),
                   decoration: const InputDecoration(

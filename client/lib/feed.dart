@@ -22,6 +22,7 @@ class FeedPage extends StatefulWidget {
 }
 
 class _FeedPageState extends State<FeedPage> {
+  List<String> get categories => ['全部', ...widget.api.policy.categories];
   late Future<List<Data>> future;
   String category = '全部', query = '';
   bool search = false;
@@ -599,7 +600,7 @@ class ComposePage extends StatefulWidget {
 class _ComposePageState extends State<ComposePage> {
   late final body = TextEditingController(text: widget.initialText);
   late final media = MediaDraft(widget.api);
-  String category = '校园日常';
+  late String category = widget.api.policy.categories.first;
   bool busy = false;
   @override
   void initState() {
@@ -696,7 +697,7 @@ class _ComposePageState extends State<ComposePage> {
                 autofocus: true,
                 maxLines: 10,
                 minLines: 6,
-                maxLength: 1000,
+                maxLength: widget.api.policy.postCharacters,
                 style: const TextStyle(fontSize: 16, height: 1.75),
                 decoration: const InputDecoration(
                   hintText: '今天发生了什么？\n或是，有什么一直想说的话…',
@@ -715,9 +716,9 @@ class _ComposePageState extends State<ComposePage> {
                     style: TextStyle(fontSize: 13, color: Colors.white60),
                   ),
                   const Spacer(),
-                  const Text(
-                    '最多 4 个',
-                    style: TextStyle(fontSize: 11, color: Colors.white38),
+                  Text(
+                    '最多 ${widget.api.policy.maxAttachments} 个',
+                    style: const TextStyle(fontSize: 11, color: Colors.white38),
                   ),
                 ],
               ),
@@ -728,7 +729,7 @@ class _ComposePageState extends State<ComposePage> {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  for (final c in categories.skip(1))
+                  for (final c in widget.api.policy.categories)
                     ChoiceChip(
                       label: Text(c),
                       selected: c == category,
@@ -991,7 +992,7 @@ class _PostDetailState extends State<PostDetail> {
                               controller: body,
                               minLines: 1,
                               maxLines: 5,
-                              maxLength: 2000,
+                              maxLength: widget.api.policy.messageCharacters,
                               decoration: const InputDecoration(
                                 hintText: '让 TA 知道，你在听…',
                                 counterText: '',

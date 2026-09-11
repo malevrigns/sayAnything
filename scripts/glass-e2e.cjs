@@ -82,9 +82,15 @@ async function assertSingleColumn(page) {
   const browser = await chromium.launch({ channel: 'chrome', headless: true });
   const pageErrors = [];
   const consoleErrors = [];
+  const searchResponses = [];
   let videoRequests = 0;
   try {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    page.on('response', async (response) => {
+      if (response.url().includes('/conversations?q=')) {
+        try { searchResponses.push({query:new URL(response.url()).searchParams.get('q'), data:await response.json()}); } catch {}
+      }
+    });
     page.setDefaultTimeout(18000);
     page.on('pageerror', (error) => pageErrors.push(error.message));
     page.on('console', (message) => {
@@ -182,11 +188,18 @@ async function assertSingleColumn(page) {
     await page.getByRole('button', { name: new RegExp(otherAlias) }).waitFor();
     await shot(page, 'records');
     await page.getByRole('button', { name: '搜索聊天记录' }).click();
-    const search = page.getByRole('textbox', { name: '搜索昵称或最近消息' });
+    const search = page.getByRole('textbox', { name: '搜索昵称或聊天内容' });
     await fillFlutter(search, otherAlias.slice(0, 4));
-    assert(await page.getByRole('button', { name: new RegExp(otherAlias) }).isVisible(), 'alias search failed');
+    await page.getByRole('button', { name: new RegExp(otherAlias) }).waitFor();
     await fillFlutter(search, reply.slice(0, 5));
-    assert(await page.getByRole('button', { name: new RegExp(reply) }).isVisible(), 'recent-message search failed');
+    await page.getByRole('button', { name: new RegExp(reply) }).waitFor();
+    await fillFlutter(search, firstDm.slice(0, 5));
+    try {
+      await page.getByRole('button', { name: new RegExp(firstDm) }).waitFor();
+    } catch (error) {
+      fs.writeFileSync(path.join(artifacts, 'search-failure.json'), JSON.stringify({input:await search.inputValue(), responses:searchResponses, semantics:await page.locator('body').ariaSnapshot()}, null, 2));
+      throw error;
+    }
     await back(page);
 
     await page.getByRole('button', { name: '设置', exact: true }).click();
