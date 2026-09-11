@@ -25,6 +25,7 @@ Docker 配置已提供，但本次本机交付不意味着已部署公网服务�
 | PORT | 8080 | HTTP 监听端口 |
 | DB_PATH | sayanything.db | SQLite 文件，父目录需存在且可写 |
 | MEDIA_DIR | 数据库同目录的 media/ | 附件存储目录；Docker 使用 /data/media |
+| FFMPEG_PATH | PATH 中的 ffmpeg | 服务端视频封面工具路径；Windows 启动脚本也检查 .tools/ffmpeg，客户端无需安装 |
 | WEB_DIR | web | 官网静态资源 |
 | DOWNLOAD_DIR | ../dist | 真实安装包存放目录 |
 | ALLOWED_ORIGIN | 空 | 允许的单个浏览器 Origin；原生客户端不依赖 CORS |
@@ -73,8 +74,12 @@ if ($report) {
 | POST /media/{id}/ticket | 获取 15 分钟临时访问链接 `{url,expiresAt}` |
 | GET /media/{id} | Bearer 或临时 ticket；支持 HEAD 和 Range 视频分段读取 |
 | DELETE /media/{id} | 删除自己尚未绑定到内容的附件 |
+| GET /nearby | 当前开启状态、revision、expiresAt、radiusKm 及附近列表；不返回位置坐标 |
+| PUT /nearby/location | `{latitude,longitude,revision}`；仅用于用户主动开启或更新位置 |
+| DELETE /nearby/location | 关闭展示并递增版本，返回 204；即使原本关闭也会使旧请求失效 |
+| POST /nearby/{id}/greet | `{}`；事务中检查位置、权限、屏蔽、每日限额，返回私聊 DTO |
 | GET /me | 当前匿名身份 |
-| PATCH /me | `{alias?,allowDM?}` |
+| PATCH /me | `{alias?,allowDM?,gender?}`；gender 为 male / female / undisclosed，默认 undisclosed |
 | DELETE /me | 永久删除身份与其内容 |
 | GET /posts | `category`、`q`、`saved=1`、`mine=1` 可组合 |
 | POST /posts | `{body,category}` |
@@ -105,6 +110,12 @@ if ($report) {
 附件对象包含 `id`、`kind`、`mimeType`、`name`、`size` 和图片宽高。图片接受 JPEG / PNG / WebP，上限 10 MiB、2500 万像素，服务端重新编码并移除 EXIF；视频接受 MP4 / WebM，上限 50 MiB，只检查容器结构，不转码或承诺所有编码都能播放。每人未发送附件额度为 100 MiB；上传并发及内存有界，过期未绑定附件定期回收。临时播放链接包含短期访问凭证，不包含登录令牌；每次请求重新检查关联内容权限，返回 `private, no-store`。
 
 备份和恢复必须同时覆盖数据库与 `MEDIA_DIR`；最简单的方法是停止服务后复制两者。反向代理需要允许至少 51 MiB 请求体及适当的上传超时。不要把媒体目录映射为公开静态目录。删除内容或身份会清理关联附件；文件删除失败时通过持久化回收队列重试。
+
+视频封面位于原文件旁的 `.poster.jpg`，备份媒体目录时一起保存。使用同一媒体地址的 `?view=poster`（保留 ticket），或票据接口额外返回的 `posterUrl` 读取，权限与原视频完全一致。新上传和旧视频均可生成封面；输出 JPEG 最长边 640 px、最多 1 MiB，最多两个 FFmpeg 进程、12 秒超时，不开放外部播放列表/媒体引用。无法解码返回 404，缺少工具返回 503；原文件可继续读取。Docker 提供安装配置，本机验证使用 FFmpeg 9.0.1。
+
+附近默认关闭，只存当前网格位置，不建立轨迹表。展示 30 分钟到期，接口立即过滤过期记录，后台每分钟清理。用户关闭私聊或主动关闭附近时，Go 同时清除位置并递增持久化 revision。客户端须使用最近读取的版本提交 PUT，旧版本返回 409，防止超时迟到的请求重新开启展示。资料 PATCH 在事务中读取最新记录，仅应用提交的字段。
+
+打招呼仅允许双方开启附近、允许私聊、同校园、网格距离约 5 公里内且无屏蔽关系。创建消息、配额记录与会话在同一事务中完成。首次招呼内容固定，每个发送方每天最多 10 个新招呼；既有会话直接复用，不新增消息和配额记录。删除身份同时清理位置与招呼配额。
 
 其他公共接口没有 `/api/v1` 前缀：`GET /health`、`GET /api/downloads`。下载只允许 `sayanything-android.apk`、`sayanything-android-arm64.apk`、`sayanything-android-armv7.apk`、`sayanything-android-x64.apk` 和 `sayanything-windows.zip`，不开放任意目录浏览。官网读取下载状态；文件不存在时禁用链接。
 

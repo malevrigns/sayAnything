@@ -1,11 +1,12 @@
 {
   "name": "sayanything-qa",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "private": true,
   "description": "sayAnything campus anonymous chat UI and website validation",
   "scripts": {
     "test:e2e": "node scripts/glass-e2e.cjs",
     "test:media": "node scripts/media-e2e.cjs",
+    "test:nearby": "node scripts/nearby-e2e.cjs",
     "test:downloads": "node scripts/verify-downloads.cjs",
     "test:visual": "node scripts/visual-qa.cjs",
     "preview:client": "node scripts/preview.cjs"

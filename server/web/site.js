@@ -20,8 +20,8 @@ async function checkDownloads() {
     const android = arm64 || data.android === true;
     setDownload(downloadLinks.android, android, arm64 ? '/downloads/sayanything-android-arm64.apk' : downloadLinks.android.dataset.url);
     setDownload(downloadLinks.windows, data.windows === true);
-    downloadLinks.android.querySelector('small').textContent = android ? `${arm64 ? 'Android 64 位' : '安卓通用版'} · v1.3.0` : '安装包准备中';
-    downloadLinks.windows.querySelector('small').textContent = data.windows ? 'Windows x64 · v1.3.0' : '安装包准备中';
+    downloadLinks.android.querySelector('small').textContent = android ? `${arm64 ? 'Android 64 位' : '安卓通用版'} · v1.4.0` : '安装包准备中';
+    downloadLinks.windows.querySelector('small').textContent = data.windows ? 'Windows x64 · v1.4.0' : '安装包准备中';
     for (const link of variantLinks) setDownload(link, data[link.dataset.downloadPlatform] === true);
     status.textContent = android || data.windows ? '自签测试发行版。安装后，连接你的校园服务即可使用。' : '安装包准备中，发布后可在这里下载。';
   } catch {

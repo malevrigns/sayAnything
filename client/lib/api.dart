@@ -30,6 +30,9 @@ class Api extends ChangeNotifier {
   bool reduceMotion = false;
   double textScale = 1;
   final Map<String, ({String url, DateTime expires})> _mediaTickets = {};
+  Future<void> _nearbyWrites = Future.value();
+  Future<void> _profileWrites = Future.value();
+  int _nearbyIntent = 0;
   AppPolicy? serverPolicy;
   AppPolicy get policy => serverPolicy ?? (throw ApiError('请先连接校园服务以获取应用设置'));
   Api({this.serverPolicy}) {
@@ -238,9 +241,50 @@ class Api extends ChangeNotifier {
     return url.toString();
   }
 
-  Future<void> updateUser(Data data) async {
-    user = Data.from(await call('PATCH', '/me', data));
-    notifyListeners();
+  Future<String> posterUrl(String id, {bool refresh = false}) async {
+    final media = Uri.parse(await mediaUrl(id, refresh: refresh));
+    return media
+        .replace(
+          queryParameters: {
+            ...media.queryParametersAll,
+            'view': ['poster'],
+          },
+        )
+        .toString();
+  }
+
+  Future<void> updateUser(Data data) {
+    final payload = Data.from(data);
+    final actor = token, service = origin;
+    final result = _profileWrites.then((_) async {
+      if (token != actor || origin != service) throw ApiError('匿名身份已变更');
+      final updated = Data.from(await call('PATCH', '/me', payload));
+      if (token != actor || origin != service) throw ApiError('匿名身份已变更');
+      user = updated;
+      notifyListeners();
+    });
+    _profileWrites = result.then<void>(
+      (_) {},
+      onError: (Object _, StackTrace _) {},
+    );
+    return result;
+  }
+
+  /// Coordinate UI requests; Go's revision guard handles late HTTP arrivals.
+  Future<dynamic> nearbyLocation(String method, [Data? data]) {
+    final intent = ++_nearbyIntent;
+    final actor = token, service = origin;
+    final payload = data == null ? null : Data.from(data);
+    final result = _nearbyWrites.then((_) {
+      if (token != actor || origin != service) throw ApiError('匿名身份已变更');
+      if (method == 'PUT' && intent != _nearbyIntent) throw ApiError('附近设置已更新');
+      return call(method, '/nearby/location', payload);
+    });
+    _nearbyWrites = result.then<void>(
+      (_) {},
+      onError: (Object _, StackTrace _) {},
+    );
+    return result;
   }
 
   Future<void> setDark(bool value) async {
@@ -271,6 +315,13 @@ class Api extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    if (token != null) {
+      try {
+        await nearbyLocation('DELETE');
+      } catch (_) {
+        /* The server also expires sharing. */
+      }
+    }
     _mediaTickets.clear();
     await _vault.delete(key: 'session:$origin');
     token = null;

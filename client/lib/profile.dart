@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'api.dart';
 import 'design.dart';
+import 'nearby.dart';
+import 'profile_fields.dart';
 import 'feed.dart';
 
 class ProfilePage extends StatelessWidget {
@@ -73,6 +75,12 @@ class ProfilePage extends StatelessWidget {
             '匿名昵称',
             user['alias'],
             () => _rename(context),
+          ),
+          _setting(
+            LucideIcons.userRound,
+            '性别',
+            genderLabel(user['gender']),
+            () => _gender(context),
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
@@ -196,7 +204,7 @@ class ProfilePage extends StatelessWidget {
           const SizedBox(height: 23),
           const Center(
             child: Text(
-              'sayAnything · 1.3.0',
+              'sayAnything · 1.4.0',
               style: TextStyle(
                 fontSize: 12,
                 color: Colors.white30,
@@ -243,6 +251,46 @@ class ProfilePage extends StatelessWidget {
     try {
       await api.updateUser({'alias': value});
       if (context.mounted) toast(context, '昵称已更新');
+    } catch (e) {
+      if (context.mounted) toast(context, e);
+    }
+  }
+
+  Future<void> _gender(BuildContext context) async {
+    final current = api.user?['gender'] ?? 'undisclosed';
+    final value = await showDialog<String>(
+      context: context,
+      builder: (dialog) => SimpleDialog(
+        title: const Text('性别'),
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(24, 0, 24, 12),
+            child: Text(
+              '只展示你选择的资料，也可以不透露。',
+              style: TextStyle(fontSize: 13, color: Colors.white60),
+            ),
+          ),
+          for (final option in genderOptions.entries)
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(dialog, option.key),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  children: [
+                    Expanded(child: Text(option.value)),
+                    if (current == option.key)
+                      const Icon(LucideIcons.check, size: 20),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+    if (value == null || value == current) return;
+    try {
+      await api.updateUser({'gender': value});
+      if (context.mounted) toast(context, '性别资料已更新');
     } catch (e) {
       if (context.mounted) toast(context, e);
     }
@@ -408,10 +456,23 @@ class PrivacyPage extends StatelessWidget {
           '附件上传到当前校园服务，与对应帖子或消息共享访问范围。图片会重新编码并移除 EXIF 信息；视频不会重新编码，可能仍含原始元数据。不要上传他人的私人影像。删除帖子或身份时，关联附件一并清理。',
         ),
         const _PrivacyText(
+          '附近的人',
+          '只有主动开启后，附近的同校同学才能看到你的匿名昵称、性别和模糊距离。大致位置按网格暂存，用于估算距离，不公开坐标，也不在后台持续定位；可以随时关闭，服务器还会自动清理到期位置。',
+        ),
+        const _PrivacyText(
           '社区约定',
           '不泄露他人的姓名、联系方式或照片，不骚扰、不人身攻击、不冒充他人。遇到不舒服的交流，可以举报和屏蔽。',
         ),
         if (api != null) ...[
+          _setting(
+            LucideIcons.mapPin,
+            '管理附近展示',
+            null,
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => NearbyPage(api: api!)),
+            ),
+          ),
           const SizedBox(height: 12),
           const Divider(),
           _setting(
@@ -534,7 +595,7 @@ class AboutPage extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         const Text(
-          '1.3.0',
+          '1.4.0',
           textAlign: TextAlign.center,
           style: TextStyle(color: Colors.white38, fontSize: 12),
         ),

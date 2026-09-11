@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"os"
@@ -42,7 +43,7 @@ func (s *Server) session(w http.ResponseWriter, r *http.Request) {
 		fail(w, 500, "could not create session")
 		return
 	}
-	writeJSON(w, 201, map[string]any{"token": raw, "user": User{id, alias, in.Campus, avatar, true, created}})
+	writeJSON(w, 201, map[string]any{"token": raw, "user": User{ID: id, Alias: alias, Campus: in.Campus, Avatar: avatar, AllowDM: true, CreatedAt: created, Gender: "undisclosed"}})
 }
 func sha256String(v string) string { h := sha256.Sum256([]byte(v)); return hex.EncodeToString(h[:]) }
 func timeAdd(days int) string {
@@ -55,8 +56,9 @@ func (s *Server) me(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 200, u)
 	case "PATCH":
 		var in struct {
-			Alias   *string `json:"alias"`
-			AllowDM *bool   `json:"allowDM"`
+			Alias   *string         `json:"alias"`
+			AllowDM *bool           `json:"allowDM"`
+			Gender  json.RawMessage `json:"gender"`
 		}
 		if !decodeBody(w, r, &in) {
 			return
@@ -67,12 +69,39 @@ func (s *Server) me(w http.ResponseWriter, r *http.Request) {
 				fail(w, 400, "alias must be 1-40 characters")
 				return
 			}
-			u.Alias = *in.Alias
 		}
-		if in.AllowDM != nil {
-			u.AllowDM = *in.AllowDM
+		var gender string
+		if len(in.Gender) > 0 {
+			if json.Unmarshal(in.Gender, &gender) != nil || !validGender(gender) {
+				fail(w, 400, "性别只能选择男、女或不透露")
+				return
+			}
 		}
-		_, err := s.db.ExecContext(r.Context(), `UPDATE users SET alias=?,allow_dm=? WHERE id=?`, u.Alias, u.AllowDM, u.ID)
+		tx, err := s.db.BeginTx(r.Context(), nil)
+		if err == nil {
+			defer tx.Rollback()
+			// Auth may predate another profile PATCH. Merge only supplied fields
+			// into the current row while holding the transaction.
+			err = tx.QueryRowContext(r.Context(), `SELECT alias,campus,avatar,allow_dm,created_at,gender FROM users WHERE id=?`, u.ID).Scan(&u.Alias, &u.Campus, &u.Avatar, &u.AllowDM, &u.CreatedAt, &u.Gender)
+			if err == nil {
+				if in.Alias != nil {
+					u.Alias = *in.Alias
+				}
+				if in.AllowDM != nil {
+					u.AllowDM = *in.AllowDM
+				}
+				if len(in.Gender) > 0 {
+					u.Gender = gender
+				}
+				_, err = tx.ExecContext(r.Context(), `UPDATE users SET alias=?,allow_dm=?,gender=? WHERE id=?`, u.Alias, u.AllowDM, u.Gender, u.ID)
+			}
+			if err == nil && in.AllowDM != nil && !*in.AllowDM {
+				err = invalidateNearby(r, tx, u.ID)
+			}
+			if err == nil {
+				err = tx.Commit()
+			}
+		}
 		if err != nil {
 			fail(w, 500, "could not update profile")
 			return
@@ -789,7 +818,7 @@ func (s *Server) blocks(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(204)
 		return
 	}
-	rows, e := s.db.QueryContext(r.Context(), `SELECT x.id,x.alias,x.campus,x.avatar,x.allow_dm,x.created_at FROM blocks b JOIN users x ON x.id=b.blocked_id WHERE b.blocker_id=?`, u.ID)
+	rows, e := s.db.QueryContext(r.Context(), `SELECT x.id,x.alias,x.campus,x.avatar,x.allow_dm,x.created_at,x.gender FROM blocks b JOIN users x ON x.id=b.blocked_id WHERE b.blocker_id=?`, u.ID)
 	if e != nil {
 		fail(w, 500, "could not list blocks")
 		return
@@ -799,7 +828,7 @@ func (s *Server) blocks(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var x User
 		var allow int
-		if rows.Scan(&x.ID, &x.Alias, &x.Campus, &x.Avatar, &allow, &x.CreatedAt) == nil {
+		if rows.Scan(&x.ID, &x.Alias, &x.Campus, &x.Avatar, &allow, &x.CreatedAt, &x.Gender) == nil {
 			x.AllowDM = allow != 0
 			out = append(out, x)
 		}

@@ -17,3 +17,5 @@ App 1.1 界面使用 Poppins（Google Fonts/SIL OFL）、中文无衬线回退�
 Lucide SVG 保留原始文件，授权说明在 `server/web/assets/lucide-LICENSE.txt`。字体授权在 `server/web/fonts/OFL.txt`，本地精简字体可用 `python scripts/subset-font.py` 重新生成。
 
 媒体上传测试使用现有校园摄影和 [Flutter 文档示例视频 bee.mp4](https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4)，仅保存到本机 `artifacts/media-fixtures/` 进行播放验证，不作为产品素材或源码发行。App 不预置测试聊天附件。
+
+1.4 视频封面由实际上传的视频抽帧，不使用 AI 图片。Windows 服务端测试工具通过 [FFmpeg 官方下载页](https://ffmpeg.org/download.html) 指向的 [Gyan 构建站](https://www.gyan.dev/ffmpeg/builds/) 获取，下载 SHA-256 已核对；工具保留在本机 `.tools/ffmpeg`，不上传 Git、不打包进 APK。位置能力使用 [geolocator](https://pub.dev/packages/geolocator)，Android 仅声明大致位置权限，使用前由用户明确开启。

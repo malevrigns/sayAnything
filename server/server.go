@@ -41,6 +41,7 @@ type User struct {
 	Avatar    int    `json:"avatar"`
 	AllowDM   bool   `json:"allowDM"`
 	CreatedAt string `json:"createdAt"`
+	Gender    string `json:"gender"`
 }
 type Post struct {
 	ID, AuthorID, Alias, Campus, Body, Category, CreatedAt string
@@ -126,6 +127,10 @@ func NewServer(c Config) (*Server, error) {
 		db.Close()
 		return nil, err
 	}
+	if err = migrateNearby(db); err != nil {
+		db.Close()
+		return nil, err
+	}
 	s := &Server{db: db, cfg: c, mux: http.NewServeMux(), authLimiter: newRateLimiter(c.RateLimit), anonLimiter: newRateLimiter(c.RateLimit), mediaSlots: make(chan struct{}, 2), stopCleanup: make(chan struct{})}
 	for i := range s.uploadSlots {
 		s.uploadSlots[i] = make(chan struct{}, 1)
@@ -133,6 +138,9 @@ func NewServer(c Config) (*Server, error) {
 	s.cleanupOrphans()
 	s.cleanupWG.Add(1)
 	go s.cleanupLoop()
+	s.cleanupNearby()
+	s.cleanupWG.Add(1)
+	go s.nearbyCleanupLoop()
 	s.routes()
 	return s, nil
 }
@@ -149,6 +157,10 @@ func (s *Server) routes() {
 	s.mux.Handle("GET /api/v1/me", s.auth(http.HandlerFunc(s.me)))
 	s.mux.Handle("PATCH /api/v1/me", s.auth(http.HandlerFunc(s.me)))
 	s.mux.Handle("DELETE /api/v1/me", s.auth(http.HandlerFunc(s.me)))
+	s.mux.Handle("GET /api/v1/nearby", s.auth(http.HandlerFunc(s.nearby)))
+	s.mux.Handle("PUT /api/v1/nearby/location", s.auth(http.HandlerFunc(s.nearbyLocation)))
+	s.mux.Handle("DELETE /api/v1/nearby/location", s.auth(http.HandlerFunc(s.nearbyLocation)))
+	s.mux.Handle("POST /api/v1/nearby/{id}/greet", s.auth(http.HandlerFunc(s.nearbyGreet)))
 	s.mux.Handle("GET /api/v1/posts", s.auth(http.HandlerFunc(s.posts)))
 	s.mux.Handle("POST /api/v1/posts", s.auth(http.HandlerFunc(s.posts)))
 	s.mux.Handle("GET /api/v1/posts/{id}", s.auth(http.HandlerFunc(s.postByID)))
@@ -200,7 +212,7 @@ func (s *Server) auth(next http.Handler) http.Handler {
 		h := sha256.Sum256([]byte(v))
 		var u User
 		var allow int
-		err := s.db.QueryRowContext(r.Context(), `SELECT u.id,u.alias,u.campus,u.avatar,u.allow_dm,u.created_at FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>?`, hex.EncodeToString(h[:]), now()).Scan(&u.ID, &u.Alias, &u.Campus, &u.Avatar, &allow, &u.CreatedAt)
+		err := s.db.QueryRowContext(r.Context(), `SELECT u.id,u.alias,u.campus,u.avatar,u.allow_dm,u.created_at,u.gender FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>?`, hex.EncodeToString(h[:]), now()).Scan(&u.ID, &u.Alias, &u.Campus, &u.Avatar, &allow, &u.CreatedAt, &u.Gender)
 		if err != nil {
 			if !s.anonLimiter.allow(clientIP(r)) {
 				fail(w, 429, "too many requests")
@@ -227,7 +239,7 @@ func (s *Server) security(next http.Handler) http.Handler {
 			w.Header().Set("Access-Control-Allow-Origin", o)
 			w.Header().Set("Vary", "Origin")
 			w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Upload-Id")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 		}
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(204)

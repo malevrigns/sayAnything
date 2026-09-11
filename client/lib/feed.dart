@@ -5,6 +5,7 @@ import 'design.dart';
 import 'chat.dart';
 import 'media_draft.dart';
 import 'media_viewer.dart';
+import 'nearby.dart';
 
 class FeedPage extends StatefulWidget {
   final Api api;
@@ -79,6 +80,15 @@ class _FeedPageState extends State<FeedPage> {
               ],
             ),
       actions: [
+        if (widget.filter == null)
+          IconButton(
+            tooltip: '附近的人',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => NearbyPage(api: widget.api)),
+            ),
+            icon: const Icon(LucideIcons.mapPin, size: 20),
+          ),
         IconButton(
           tooltip: '搜索帖子',
           onPressed: () => setState(() => search = !search),

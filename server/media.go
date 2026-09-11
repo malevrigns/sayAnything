@@ -123,6 +123,7 @@ func (s *Server) mediaUpload(w http.ResponseWriter, r *http.Request) {
 	id := randomID()
 	path := filepath.Join(s.cfg.MediaDir, id)
 	if err = os.WriteFile(path, out, 0600); err != nil {
+		s.removeMediaFiles(path)
 		fail(w, 500, "无法保存媒体文件")
 		return
 	}
@@ -134,7 +135,7 @@ func (s *Server) mediaUpload(w http.ResponseWriter, r *http.Request) {
 	}
 	if err == nil && used+m.Size > pendingQuota {
 		_ = tx.Rollback()
-		s.removeOrQueue(path)
+		s.removeMediaFiles(path)
 		fail(w, 413, "待发送附件已超过 100MiB")
 		return
 	}
@@ -147,7 +148,7 @@ func (s *Server) mediaUpload(w http.ResponseWriter, r *http.Request) {
 		_ = tx.Rollback()
 	}
 	if err != nil {
-		s.removeOrQueue(path)
+		s.removeMediaFiles(path)
 		if key != "" {
 			var old string
 			if s.db.QueryRowContext(r.Context(), `SELECT id FROM media WHERE owner_id=? AND upload_key=?`, u.ID, key).Scan(&old) == nil {
@@ -158,6 +159,11 @@ func (s *Server) mediaUpload(w http.ResponseWriter, r *http.Request) {
 		}
 		fail(w, 500, "无法保存媒体信息")
 		return
+	}
+	if m.Kind == "video" {
+		// A missing decoder or damaged video may lack a cover without breaking
+		// existing uploads. The original remains playable/downloadable.
+		_, _ = s.ensurePoster(r.Context(), m, path)
 	}
 	writeJSON(w, 201, m)
 }
@@ -225,7 +231,12 @@ func (s *Server) mediaTicket(w http.ResponseWriter, r *http.Request) {
 		fail(w, 500, "无法创建媒体凭证")
 		return
 	}
-	writeJSON(w, 200, map[string]any{"url": "/api/v1/media/" + id + "?ticket=" + raw, "expiresAt": exp.Format(time.RFC3339Nano)})
+	url := "/api/v1/media/" + id + "?ticket=" + raw
+	dto := map[string]any{"url": url, "expiresAt": exp.Format(time.RFC3339Nano)}
+	if m, _, _, err := s.scanMedia(id); err == nil && m.Kind == "video" {
+		dto["posterUrl"] = url + "&view=poster"
+	}
+	writeJSON(w, 200, dto)
 }
 
 func (s *Server) requestUser(r *http.Request) (User, error) {
@@ -260,6 +271,24 @@ func (s *Server) mediaRead(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fail(w, 404, "媒体不存在")
 		return
+	}
+	if r.URL.Query().Get("view") == "poster" {
+		path, err = s.ensurePoster(r.Context(), m, path)
+		if err != nil {
+			if errors.Is(err, errPosterUnavailable) {
+				w.Header().Set("Retry-After", "30")
+				fail(w, 503, "视频封面暂不可用")
+			} else {
+				fail(w, 404, "此视频暂无封面")
+			}
+			return
+		}
+		// Recheck visibility after a potentially slow decode.
+		if !s.mediaVisible(r, u, id) {
+			fail(w, 404, "媒体不存在")
+			return
+		}
+		m.MIMEType, m.Name = "image/jpeg", "poster.jpg"
 	}
 	f, err := os.Open(path)
 	if err != nil {
@@ -319,7 +348,7 @@ func (s *Server) mediaDelete(w http.ResponseWriter, r *http.Request) {
 		fail(w, 500, "无法删除媒体信息")
 		return
 	}
-	s.removeOrQueue(path)
+	s.removeMediaFiles(path)
 	w.WriteHeader(204)
 }
 
@@ -452,7 +481,7 @@ func (s *Server) deleteContentWithMedia(ctx context.Context, query string, args 
 		return err
 	}
 	for _, path := range paths {
-		s.removeOrQueue(path)
+		s.removeMediaFiles(path)
 	}
 	return nil
 }
@@ -493,7 +522,7 @@ func (s *Server) cleanupOrphans() {
 			_ = tx.Rollback()
 		}
 		if err == nil {
-			s.removeOrQueue(path)
+			s.removeMediaFiles(path)
 		}
 	}
 	_, _ = s.db.Exec(`DELETE FROM media_tickets WHERE expires_at<?`, now())

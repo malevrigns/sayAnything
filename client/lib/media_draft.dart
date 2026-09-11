@@ -295,28 +295,9 @@ class MediaDraftPanel extends StatelessWidget {
               child: Icon(LucideIcons.imageOff, color: muted),
             ),
           )
-        : Container(
-            color: forest,
-            padding: const EdgeInsets.all(9),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(LucideIcons.film, size: 23, color: Colors.white70),
-                const SizedBox(height: 5),
-                Text(
-                  item.file.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 11, color: Colors.white70),
-                ),
-                Text(
-                  formatMediaSize(item.size),
-                  style: const TextStyle(fontSize: 10, color: muted),
-                ),
-              ],
-            ),
-          );
+        : LocalVideoPreview(key: ValueKey(item.uploadId), file: item.file);
     return SizedBox(
+      key: ValueKey(item.uploadId),
       width: 94,
       child: Stack(
         children: [
@@ -331,6 +312,37 @@ class MediaDraftPanel extends StatelessWidget {
               ),
             ),
           ),
+          if (item.kind == 'video')
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: IgnorePointer(
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    bottom: Radius.circular(16),
+                  ),
+                  child: ColoredBox(
+                    color: Colors.black54,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 5,
+                      ),
+                      child: Text(
+                        '${item.file.name} · ${formatMediaSize(item.size)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 9,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           Positioned(
             right: 0,
             top: 0,
