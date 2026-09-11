@@ -264,6 +264,48 @@ class Glass extends StatelessWidget {
   );
 }
 
+class GlassChoiceBar<T> extends StatelessWidget {
+  final List<({T value, String label})> options;
+  final T value;
+  final ValueChanged<T> onChanged;
+  const GlassChoiceBar({
+    super.key,
+    required this.options,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) => Glass(
+    radius: 32,
+    padding: const EdgeInsets.all(6),
+    child: Row(
+      children: [
+        for (final option in options)
+          Expanded(
+            child: Semantics(
+              selected: value == option.value,
+              child: TextButton(
+                onPressed: () => onChanged(option.value),
+                style: TextButton.styleFrom(
+                  minimumSize: const Size(44, 44),
+                  shape: const StadiumBorder(),
+                  backgroundColor: value == option.value
+                      ? Colors.white10
+                      : Colors.transparent,
+                  foregroundColor: value == option.value
+                      ? Colors.white
+                      : Colors.white38,
+                ),
+                child: Text(option.label),
+              ),
+            ),
+          ),
+      ],
+    ),
+  );
+}
+
 class _GlassEdge extends CustomPainter {
   final double radius;
   final bool strong;

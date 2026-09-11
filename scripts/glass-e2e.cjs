@@ -68,14 +68,32 @@ async function assertNoOverflow(page, width) {
 }
 
 async function assertSingleColumn(page) {
-  const nav = ['聊天', '记录', '设置'];
+  const nav = ['动态', '聊天', '附近', '我'];
   const boxes = [];
   for (const name of nav) boxes.push(await page.getByRole('button', { name, exact: true }).boundingBox());
-  assert(boxes.every(Boolean), 'all three navigation controls should be visible');
+  assert(boxes.every(Boolean), 'all four navigation controls should be visible');
   const left = Math.min(...boxes.map((box) => box.x));
   const right = Math.max(...boxes.map((box) => box.x + box.width));
   assert(right - left <= 480, `desktop app content exceeded 480px (${right - left}px)`);
   assert(left >= (1440 - 520) / 2, `desktop app was not centered (${left}px)`);
+}
+
+async function assertNavigation(page, visible = true) {
+  const names = ['动态', '聊天', '附近', '我'];
+  const boxes = [];
+  for (const name of names) {
+    const button = page.getByRole('button', { name, exact: true });
+    await button.waitFor({ state: visible ? 'visible' : 'hidden' });
+    if (visible) boxes.push(await button.boundingBox());
+  }
+  if (visible) {
+    assert(boxes.every(Boolean), 'all four tabs need layout boxes');
+    assert(boxes.every((box, index) => index === 0 || box.x > boxes[index - 1].x), 'tabs must be ordered 动态 / 聊天 / 附近 / 我');
+    assert(boxes.every((box) => Math.abs(box.y - boxes[0].y) < 2), 'tabs must share one bottom row');
+    assert(boxes[0].y > page.viewportSize().height / 2, 'primary tabs must be at the bottom');
+  }
+  assert.equal(await page.getByRole('button', { name: '设置', exact: true }).count(), 0, 'settings must not remain a bottom tab');
+  assert.equal(await page.getByRole('button', { name: '记录', exact: true }).count(), 0, 'old records tab must be renamed');
 }
 
 (async () => {
@@ -115,13 +133,15 @@ async function assertSingleColumn(page) {
     await page.getByRole('textbox', { name: '你在哪所学校？' }).waitFor();
     await shot(page, 'welcome');
     assert(await page.getByText('校园匿名交流 · 无需公开身份', { exact: true }).isVisible());
-    assertNoOverflow(page, 390);
+    await assertNoOverflow(page, 390);
 
     await fillFlutter(page.getByRole('textbox', { name: '你在哪所学校？' }), campus);
     await page.getByRole('checkbox').click();
     await poll(async () => await page.getByRole('checkbox').getAttribute('aria-checked') === 'true', 'consent not checked');
     await page.getByRole('button', { name: '进入校园', exact: true }).click();
     await page.getByText('校园里的声音', { exact: true }).waitFor({ timeout: 25000 });
+    await assertNavigation(page);
+    assert.equal(await page.getByRole('button', { name: '附近的人', exact: true }).count(), 0, 'old nearby header shortcut must be removed');
 
     const other = await api('POST', '/session', null, { campus });
     const otherAlias = `晚风同学${String(Date.now()).slice(-4)}`;
@@ -132,8 +152,11 @@ async function assertSingleColumn(page) {
     await page.getByRole('button', { name: '刷新广场' }).click();
     const postCard = page.getByRole('group', { name: new RegExp(postText) });
     await postCard.waitFor();
+    // Flutter fetches fallback CJK glyph subsets after the first visible frame.
+    await page.waitForTimeout(8000);
     await shot(page, 'feed');
     await postCard.click({ position: { x: 100, y: 70 } });
+    await assertNavigation(page, false);
 
     const comment = '我也看到了，今天的晚霞很安静。';
     await fillFlutter(page.getByRole('textbox'), comment);
@@ -152,6 +175,7 @@ async function assertSingleColumn(page) {
       return items[0];
     }, 'conversation was not created');
     await page.getByRole('textbox', { name: '输入消息…' }).waitFor();
+    await assertNavigation(page, false);
     const firstDm = '你好，看到你的晚霞分享了。';
     await fillFlutter(page.getByRole('textbox'), firstDm);
     await page.getByRole('button', { name: '发送消息' }).click();
@@ -183,17 +207,29 @@ async function assertSingleColumn(page) {
     await back(page);
     await back(page);
 
-    await page.getByRole('button', { name: '记录', exact: true }).click();
+    await page.getByRole('button', { name: '聊天', exact: true }).click();
     await page.getByText('聊天记录', { exact: true }).waitFor();
+    await assertNavigation(page);
     await page.getByRole('button', { name: new RegExp(otherAlias) }).waitFor();
     await shot(page, 'records');
     await page.getByRole('button', { name: '搜索聊天记录' }).click();
     const search = page.getByRole('textbox', { name: '搜索昵称或聊天内容' });
-    await fillFlutter(search, otherAlias.slice(0, 4));
+    await search.waitFor();
+    await assertNavigation(page, false);
+    async function searchFor(query) {
+      if (await search.inputValue()) {
+        await page.getByRole('button', { name: '清空搜索', exact: true }).click();
+        await poll(async () => (await search.inputValue()) === '', 'clear search did not empty the input');
+      }
+      await fillFlutter(search, query);
+      assert.equal(await search.inputValue(), query, 'search input must match the requested query');
+      await poll(() => searchResponses.some((response) => response.query === query), `search request did not complete: ${query}`);
+    }
+    await searchFor(otherAlias.slice(0, 4));
     await page.getByRole('button', { name: new RegExp(otherAlias) }).waitFor();
-    await fillFlutter(search, reply.slice(0, 5));
+    await searchFor(reply.slice(0, 5));
     await page.getByRole('button', { name: new RegExp(reply) }).waitFor();
-    await fillFlutter(search, firstDm.slice(0, 5));
+    await searchFor(firstDm.slice(0, 5));
     try {
       await page.getByRole('button', { name: new RegExp(firstDm) }).waitFor();
     } catch (error) {
@@ -202,7 +238,7 @@ async function assertSingleColumn(page) {
     }
     await back(page);
 
-    await page.getByRole('button', { name: '设置', exact: true }).click();
+    await page.getByRole('button', { name: '我', exact: true }).click();
     await page.getByRole('button', { name: /匿名昵称/ }).click();
     const nickname = `灰玻璃同学${String(Date.now()).slice(-3)}`;
     await fillFlutter(page.getByRole('textbox'), nickname);
@@ -212,6 +248,36 @@ async function assertSingleColumn(page) {
     if (await renameToast.count()) {
       await renameToast.waitFor({ state: 'hidden', timeout: 8000 });
     }
+    await assertNavigation(page);
+    await page.getByRole('button', { name: /^性别/ }).waitFor();
+    await shot(page, 'profile');
+    for (const title of ['我的发布', '我的收藏']) {
+      await page.getByRole('button', { name: new RegExp(title) }).click();
+      await page.getByText(title, { exact: true }).waitFor();
+      await assertNavigation(page, false);
+      await back(page);
+    }
+    await page.getByRole('button', { name: /隐私与数据/ }).click();
+    await page.getByText(/私聊不是端到端加密/).waitFor();
+    await assertNavigation(page, false);
+    await back(page);
+
+    await page.getByRole('button', { name: '附近', exact: true }).click();
+    await page.getByText('开启附近并展示我', { exact: true }).waitFor();
+    await assertNavigation(page);
+    assert.equal(await page.getByRole('button', { name: /返回|Back/ }).count(), 0, 'nearby primary tab must not have a back button');
+
+    await page.getByRole('button', { name: '动态', exact: true }).click();
+    const settingsBrand = page.getByRole('button', { name: 'sayAnything，打开设置', exact: true });
+    await settingsBrand.hover();
+    await page.getByText('打开设置', { exact: true }).waitFor();
+    // The visible Flutter tooltip is temporarily included in the button name.
+    await page.mouse.move(0, 0);
+    await page.getByText('打开设置', { exact: true }).waitFor({ state: 'hidden' });
+    await settingsBrand.click();
+    await page.getByRole('button', { name: /文字大小/ }).waitFor();
+    await assertNavigation(page, false);
+    assert.equal(await page.getByRole('button', { name: /匿名昵称|^性别|我的发布|我的收藏/ }).count(), 0, 'profile controls must live in 我');
 
     const dynamic = page.getByRole('switch', { name: /动态背景/ });
     if ((await dynamic.getAttribute('aria-checked')) === 'true') await dynamic.click();
@@ -222,18 +288,31 @@ async function assertSingleColumn(page) {
     await page.getByRole('button', { name: /文字大小/ }).click();
     await page.getByRole('button', { name: '大', exact: true }).click();
     await page.getByText('同时尊重设备的系统文字缩放设置。', { exact: true }).waitFor();
+    await assertNavigation(page, false);
     await shot(page, 'size');
     await back(page);
     await page.getByRole('button', { name: /隐私与数据/ }).click();
     await page.getByText(/消息保存在你连接的校园服务端/).waitFor();
     await page.getByText(/私聊不是端到端加密/).waitFor();
+    await assertNavigation(page, false);
     await back(page);
+    for (const width of [360, 430, 1440]) {
+      await page.setViewportSize({ width, height: width === 1440 ? 1000 : 844 });
+      await page.waitForTimeout(350);
+      await assertNoOverflow(page, width);
+      await assertNavigation(page, false);
+      await shot(page, width === 1440 ? 'settings-desktop' : `${width}`);
+    }
+    await back(page);
+    await page.getByText('校园里的声音', { exact: true }).waitFor();
+    await assertNavigation(page);
 
     for (const width of [360, 430]) {
       await page.setViewportSize({ width, height: 844 });
       await page.waitForTimeout(350); // Allow Flutter to publish the new frame and semantics.
       await assertNoOverflow(page, width);
-      await shot(page, `${width}`);
+      await assertNavigation(page);
+      await shot(page, `feed-${width}`);
     }
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.waitForTimeout(350);
@@ -249,7 +328,7 @@ async function assertSingleColumn(page) {
       (message) => !message.includes('Failed to load resource: net::ERR_FAILED'),
     );
     assert.deepEqual(unexpectedConsoleErrors, [], `console errors: ${unexpectedConsoleErrors.join('\n')}`);
-    console.log(`PASS glass UI: ${campus}; fallback, real feed/comment/DM/room/search/settings/privacy, 390/360/430/1440.`);
+    console.log(`PASS glass UI: ${campus}; four tabs, brand settings, profile/nearby, fallback, real feed/comment/DM/room/search/settings/privacy, 390/360/430/1440.`);
   } finally {
     await browser.close();
   }

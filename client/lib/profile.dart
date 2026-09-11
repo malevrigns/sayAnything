@@ -8,7 +8,8 @@ import 'feed.dart';
 
 class ProfilePage extends StatelessWidget {
   final Api api;
-  const ProfilePage({super.key, required this.api});
+  final bool settings;
+  const ProfilePage({super.key, required this.api, this.settings = false});
   Future<void> preference(
     BuildContext context, {
     bool? background,
@@ -30,7 +31,12 @@ class ProfilePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = api.user!;
     return Scaffold(
-      appBar: AppBar(toolbarHeight: 76, title: const Text('设置')),
+      appBar: AppBar(
+        toolbarHeight: 76,
+        automaticallyImplyLeading: false,
+        leading: settings ? backButton(context) : null,
+        title: Text(settings ? '设置' : '我'),
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 2, 20, 26),
         children: [
@@ -69,87 +75,92 @@ class ProfilePage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 25),
-          const _GroupLabel('聊天偏好'),
-          _setting(
-            LucideIcons.pencil,
-            '匿名昵称',
-            user['alias'],
-            () => _rename(context),
-          ),
-          _setting(
-            LucideIcons.userRound,
-            '性别',
-            genderLabel(user['gender']),
-            () => _gender(context),
-          ),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            secondary: const Icon(
-              LucideIcons.messageCircle,
-              size: 20,
-              color: Colors.white60,
+          if (!settings) ...[
+            const _GroupLabel('匿名资料'),
+            _setting(
+              LucideIcons.pencil,
+              '匿名昵称',
+              user['alias'],
+              () => _rename(context),
             ),
-            title: const Text('接收匿名私聊', style: TextStyle(fontSize: 14)),
-            subtitle: const Text(
-              '由你决定是否开始一段对话',
-              style: TextStyle(fontSize: 12, color: Colors.white38),
+            _setting(
+              LucideIcons.userRound,
+              '性别',
+              genderLabel(user['gender']),
+              () => _gender(context),
             ),
-            value: user['allowDM'] ?? true,
-            onChanged: (v) async {
-              try {
-                await api.updateUser({'allowDM': v});
-              } catch (e) {
-                if (context.mounted) toast(context, e);
-              }
-            },
-          ),
-          _setting(
-            LucideIcons.type,
-            '文字大小',
-            api.textScale < 1
-                ? '小'
-                : api.textScale > 1
-                ? '大'
-                : '标准',
-            () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => TextSizePage(api: api)),
+          ],
+          if (settings) ...[
+            const _GroupLabel('聊天偏好'),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              secondary: const Icon(
+                LucideIcons.messageCircle,
+                size: 20,
+                color: Colors.white60,
+              ),
+              title: const Text('接收匿名私聊', style: TextStyle(fontSize: 14)),
+              subtitle: const Text(
+                '由你决定是否开始一段对话',
+                style: TextStyle(fontSize: 12, color: Colors.white38),
+              ),
+              value: user['allowDM'] ?? true,
+              onChanged: (v) async {
+                try {
+                  await api.updateUser({'allowDM': v});
+                } catch (e) {
+                  if (context.mounted) toast(context, e);
+                }
+              },
             ),
-          ),
+            _setting(
+              LucideIcons.type,
+              '文字大小',
+              api.textScale < 1
+                  ? '小'
+                  : api.textScale > 1
+                  ? '大'
+                  : '标准',
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => TextSizePage(api: api)),
+              ),
+            ),
+            const SizedBox(height: 22),
+            const _GroupLabel('界面体验'),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              secondary: const Icon(
+                LucideIcons.play,
+                size: 20,
+                color: Colors.white60,
+              ),
+              title: const Text('动态背景', style: TextStyle(fontSize: 14)),
+              subtitle: const Text(
+                '弱化的动态纹理，不打扰阅读',
+                style: TextStyle(fontSize: 12, color: Colors.white38),
+              ),
+              value: api.dynamicBackground,
+              onChanged: (v) => preference(context, background: v),
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              secondary: const Icon(
+                LucideIcons.feather,
+                size: 20,
+                color: Colors.white60,
+              ),
+              title: const Text('减少动态效果', style: TextStyle(fontSize: 14)),
+              subtitle: const Text(
+                '使用静态背景，减少界面动画',
+                style: TextStyle(fontSize: 12, color: Colors.white38),
+              ),
+              value: api.reduceMotion,
+              onChanged: (v) => preference(context, reduce: v),
+            ),
+          ],
           const SizedBox(height: 22),
-          const _GroupLabel('界面体验'),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            secondary: const Icon(
-              LucideIcons.play,
-              size: 20,
-              color: Colors.white60,
-            ),
-            title: const Text('动态背景', style: TextStyle(fontSize: 14)),
-            subtitle: const Text(
-              '弱化的动态纹理，不打扰阅读',
-              style: TextStyle(fontSize: 12, color: Colors.white38),
-            ),
-            value: api.dynamicBackground,
-            onChanged: (v) => preference(context, background: v),
-          ),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            secondary: const Icon(
-              LucideIcons.feather,
-              size: 20,
-              color: Colors.white60,
-            ),
-            title: const Text('减少动态效果', style: TextStyle(fontSize: 14)),
-            subtitle: const Text(
-              '使用静态背景，减少界面动画',
-              style: TextStyle(fontSize: 12, color: Colors.white38),
-            ),
-            value: api.reduceMotion,
-            onChanged: (v) => preference(context, reduce: v),
-          ),
-          const SizedBox(height: 22),
-          const _GroupLabel('隐私与应用'),
+          _GroupLabel(settings ? '隐私与应用' : '隐私与内容'),
           _setting(
             LucideIcons.shield,
             '隐私与数据',
@@ -159,59 +170,63 @@ class ProfilePage extends StatelessWidget {
               MaterialPageRoute(builder: (_) => PrivacyPage(api: api)),
             ),
           ),
-          _setting(
-            LucideIcons.fileText,
-            '我的发布',
-            null,
-            () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) =>
-                    FeedPage(api: api, filter: 'mine', title: '我的发布'),
+          if (!settings) ...[
+            _setting(
+              LucideIcons.fileText,
+              '我的发布',
+              null,
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      FeedPage(api: api, filter: 'mine', title: '我的发布'),
+                ),
               ),
             ),
-          ),
-          _setting(
-            LucideIcons.bookmark,
-            '我的收藏',
-            null,
-            () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) =>
-                    FeedPage(api: api, filter: 'saved', title: '我的收藏'),
+            _setting(
+              LucideIcons.bookmark,
+              '我的收藏',
+              null,
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      FeedPage(api: api, filter: 'saved', title: '我的收藏'),
+                ),
               ),
             ),
-          ),
-          _setting(
-            LucideIcons.info,
-            '关于 sayAnything',
-            null,
-            () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AboutPage()),
-            ),
-          ),
-          _setting(
-            LucideIcons.circleHelp,
-            '使用说明',
-            null,
-            () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AboutPage(help: true)),
-            ),
-          ),
-          const SizedBox(height: 23),
-          const Center(
-            child: Text(
-              'sayAnything · 1.4.0',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.white30,
-                letterSpacing: .1,
+          ],
+          if (settings) ...[
+            _setting(
+              LucideIcons.info,
+              '关于 sayAnything',
+              null,
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AboutPage()),
               ),
             ),
-          ),
+            _setting(
+              LucideIcons.circleHelp,
+              '使用说明',
+              null,
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AboutPage(help: true)),
+              ),
+            ),
+            const SizedBox(height: 23),
+            const Center(
+              child: Text(
+                'sayAnything · 1.4.1',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.white30,
+                  letterSpacing: .1,
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -260,31 +275,62 @@ class ProfilePage extends StatelessWidget {
     final current = api.user?['gender'] ?? 'undisclosed';
     final value = await showDialog<String>(
       context: context,
-      builder: (dialog) => SimpleDialog(
-        title: const Text('性别'),
-        children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(24, 0, 24, 12),
-            child: Text(
-              '只展示你选择的资料，也可以不透露。',
-              style: TextStyle(fontSize: 13, color: Colors.white60),
-            ),
-          ),
-          for (final option in genderOptions.entries)
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(dialog, option.key),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Row(
+      barrierColor: Colors.black.withValues(alpha: .35),
+      builder: (dialog) => Dialog(
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: Colors.transparent,
+        elevation: 0,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 440),
+          child: Glass(
+            strong: true,
+            radius: 32,
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Expanded(child: Text(option.value)),
-                    if (current == option.key)
-                      const Icon(LucideIcons.check, size: 20),
+                    const Expanded(
+                      child: Text(
+                        '性别',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: '关闭性别选择',
+                      onPressed: () => Navigator.pop(dialog),
+                      icon: const Icon(LucideIcons.x, size: 20),
+                    ),
                   ],
                 ),
-              ),
+                const SizedBox(height: 8),
+                const Text(
+                  '只展示你选择的资料，也可以不透露。',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.white60,
+                    height: 1.7,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                GlassChoiceBar<String>(
+                  value: current,
+                  options: genderOptions.entries
+                      .map((entry) => (value: entry.key, label: entry.value))
+                      .toList(),
+                  onChanged: (value) => Navigator.pop(dialog, value),
+                ),
+              ],
             ),
-        ],
+          ),
+        ),
       ),
     );
     if (value == null || value == current) return;
@@ -369,37 +415,20 @@ class TextSizePage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 27),
-          Glass(
-            padding: const EdgeInsets.all(6),
-            child: Row(
-              children: [
-                for (final entry in [('小', .93), ('标准', 1.0), ('大', 1.12)])
-                  Expanded(
-                    child: TextButton(
-                      onPressed: () async {
-                        try {
-                          await api.setVisualOptions(scale: entry.$2);
-                        } catch (_) {
-                          if (context.mounted) toast(context, '设置暂时无法保存');
-                        }
-                      },
-                      style: TextButton.styleFrom(
-                        backgroundColor: api.textScale == entry.$2
-                            ? Colors.white10
-                            : Colors.transparent,
-                      ),
-                      child: Text(
-                        entry.$1,
-                        style: TextStyle(
-                          color: api.textScale == entry.$2
-                              ? Colors.white
-                              : Colors.white38,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+          GlassChoiceBar<double>(
+            value: api.textScale,
+            options: const [
+              (value: .93, label: '小'),
+              (value: 1.0, label: '标准'),
+              (value: 1.12, label: '大'),
+            ],
+            onChanged: (value) async {
+              try {
+                await api.setVisualOptions(scale: value);
+              } catch (_) {
+                if (context.mounted) toast(context, '设置暂时无法保存');
+              }
+            },
           ),
           const SizedBox(height: 18),
           const Text(
@@ -595,7 +624,7 @@ class AboutPage extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         const Text(
-          '1.4.0',
+          '1.4.1',
           textAlign: TextAlign.center,
           style: TextStyle(color: Colors.white38, fontSize: 12),
         ),
@@ -618,11 +647,11 @@ class AboutPage extends StatelessWidget {
           ),
           (
             '如何开始一段对话？',
-            '在聊天页发布一条心情，或点击「话题房间」加入同校聊天。看到让你共鸣的帖子，可以打开详情，点击「悄悄打个招呼」。',
+            '在动态页发布一条心情，或点击「话题房间」加入同校聊天。看到让你共鸣的帖子，可以打开详情，点击「悄悄打个招呼」。',
           ),
           (
             '聊天记录保存在哪里？',
-            '内容保存在连接的校园服务端。记录页展示当前匿名身份的私聊；广场帖子可在设置里的「我的发布」和「我的收藏」中查看。',
+            '内容保存在连接的校园服务端。「聊天」展示当前匿名身份的私聊；广场帖子可在「我」里的「我的发布」和「我的收藏」中查看。',
           ),
           (
             '如何删除记录？',

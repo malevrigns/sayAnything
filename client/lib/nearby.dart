@@ -8,10 +8,12 @@ import 'profile_fields.dart';
 
 class NearbyPage extends StatefulWidget {
   final Api api;
+  final bool embedded;
   final Future<DeviceLocation> Function() locate;
   const NearbyPage({
     super.key,
     required this.api,
+    this.embedded = false,
     this.locate = requestDeviceLocation,
   });
   @override
@@ -197,7 +199,8 @@ class _NearbyPageState extends State<NearbyPage> {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
-      leading: backButton(context),
+      leading: widget.embedded ? null : backButton(context),
+      automaticallyImplyLeading: !widget.embedded,
       title: const Text('附近的人'),
       actions: [
         IconButton(

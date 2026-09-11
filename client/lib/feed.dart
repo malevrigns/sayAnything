@@ -5,16 +5,17 @@ import 'design.dart';
 import 'chat.dart';
 import 'media_draft.dart';
 import 'media_viewer.dart';
-import 'nearby.dart';
 
 class FeedPage extends StatefulWidget {
   final Api api;
   final VoidCallback? onCompose;
+  final VoidCallback? onSettings;
   final String? filter, title;
   const FeedPage({
     super.key,
     required this.api,
     this.onCompose,
+    this.onSettings,
     this.filter,
     this.title,
   });
@@ -61,34 +62,51 @@ class _FeedPageState extends State<FeedPage> {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
       toolbarHeight: 74,
+      excludeHeaderSemantics: widget.title == null,
       leading: widget.filter != null ? backButton(context) : null,
       title: widget.title != null
           ? Text(widget.title!)
-          : const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                BrandMark(size: 28),
-                SizedBox(width: 8),
-                Text(
-                  'sayAnything',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -.8,
+          : Semantics(
+              button: widget.onSettings != null,
+              label: widget.onSettings == null
+                  ? 'sayAnything'
+                  : 'sayAnything，打开设置',
+              child: Tooltip(
+                message: '打开设置',
+                excludeFromSemantics: true,
+                child: InkWell(
+                  onTap: widget.onSettings,
+                  borderRadius: BorderRadius.circular(12),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 48),
+                    child: ExcludeSemantics(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const BrandMark(size: 28),
+                          const SizedBox(width: 8),
+                          const Flexible(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                'sayAnything',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: -.8,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-              ],
+              ),
             ),
       actions: [
-        if (widget.filter == null)
-          IconButton(
-            tooltip: '附近的人',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => NearbyPage(api: widget.api)),
-            ),
-            icon: const Icon(LucideIcons.mapPin, size: 20),
-          ),
         IconButton(
           tooltip: '搜索帖子',
           onPressed: () => setState(() => search = !search),

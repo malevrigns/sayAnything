@@ -83,6 +83,13 @@ async function shot(page, name) {
   await page.screenshot({ path: path.join(artifacts, `media-${name}.png`) });
 }
 
+async function assertNavigation(page, visible = true) {
+  for (const name of ['动态', '聊天', '附近', '我']) {
+    await page.getByRole('button', { name, exact: true }).waitFor({ state: visible ? 'visible' : 'hidden' });
+  }
+  assert.equal(await page.getByRole('button', { name: '设置', exact: true }).count(), 0, 'settings must not remain a tab');
+}
+
 (async () => {
   const browser = await chromium.launch({ channel: 'chrome', headless: true });
   const pageErrors = [];
@@ -109,12 +116,14 @@ async function shot(page, name) {
     );
     await page.getByRole('button', { name: '进入校园', exact: true }).click();
     await page.getByText('校园里的声音', { exact: true }).waitFor({ timeout: 30000 });
+    await assertNavigation(page);
 
     const peer = await api('POST', '/session', null, { campus });
     await api('PATCH', '/me', peer.token, { alias: '媒体联测同学' });
 
     const postText = `图片视频联测 ${String(Date.now()).slice(-6)}`;
     await page.getByRole('button', { name: '说点什么', exact: true }).click();
+    await assertNavigation(page, false);
     await fillFlutter(page.getByRole('textbox'), postText);
     await choose(page, [imageFile, videoFile]);
     await page.getByRole('button', { name: '移除附件 2', exact: true }).waitFor();
@@ -146,6 +155,7 @@ async function shot(page, name) {
     const imageButton = page.getByRole('button', { name: /查看图片/ }).first();
     await imageButton.click();
     await page.getByText(image.name, { exact: true }).waitFor();
+    await assertNavigation(page, false);
     await shot(page, 'image-viewer');
     assert.equal(await page.getByRole('button', { name: '重新加载附件' }).count(), 0, 'image viewer showed an error');
     await back(page);
@@ -154,6 +164,7 @@ async function shot(page, name) {
     await videoButton.click();
     const play = page.getByRole('button', { name: '播放视频', exact: true });
     await play.waitFor({ timeout: 30000 });
+    await assertNavigation(page, false);
     const element = page.locator('video').first();
     await element.waitFor({ timeout: 30000 });
     const initial = await element.evaluate((node) => ({ paused: node.paused, time: node.currentTime, duration: node.duration }));
@@ -167,6 +178,7 @@ async function shot(page, name) {
 
     await postCard.click({ position: { x: 100, y: 70 } });
     await page.getByRole('button', { name: '发送评论' }).waitFor();
+    await assertNavigation(page, false);
     const commentText = '评论图片附件';
     await fillFlutter(page.getByRole('textbox'), commentText);
     await choose(page, imageFile);
@@ -192,6 +204,7 @@ async function shot(page, name) {
     await shot(page, 'room-video');
     await back(page);
     await back(page);
+    await assertNavigation(page);
 
     await page.mouse.move(195, 500);
     await page.mouse.wheel(0, -1200);
@@ -214,6 +227,7 @@ async function shot(page, name) {
       .click({ position: { x: 100, y: 70 } });
     await page.getByRole('button', { name: '悄悄打个招呼' }).click();
     await page.getByRole('textbox', { name: '输入消息…' }).waitFor();
+    await assertNavigation(page, false);
     const dmText = '私聊图片附件';
     await fillFlutter(page.getByRole('textbox', { name: '输入消息…' }), dmText);
     await choose(page, imageFile);

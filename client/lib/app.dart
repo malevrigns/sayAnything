@@ -6,6 +6,7 @@ import 'design.dart';
 import 'feed.dart';
 import 'chat.dart';
 import 'profile.dart';
+import 'nearby.dart';
 
 class SayAnythingApp extends StatefulWidget {
   final Api api;
@@ -372,6 +373,7 @@ class HomeShell extends StatefulWidget {
 }
 
 class _HomeShellState extends State<HomeShell> {
+  static const labels = ['动态', '聊天', '附近', '我'];
   int tab = 0, revision = 0;
   Future<void> compose() async {
     final sent = await Navigator.push<bool>(
@@ -394,8 +396,15 @@ class _HomeShellState extends State<HomeShell> {
         key: ValueKey('feed$revision'),
         api: widget.api,
         onCompose: compose,
+        onSettings: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ProfilePage(api: widget.api, settings: true),
+          ),
+        ),
       ),
       InboxPage(api: widget.api, onNew: () => setState(() => tab = 0)),
+      NearbyPage(api: widget.api, embedded: true),
       ProfilePage(api: widget.api),
     ];
     return Scaffold(
@@ -433,12 +442,12 @@ class _HomeShellState extends State<HomeShell> {
                 padding: const EdgeInsets.all(7),
                 child: Row(
                   children: [
-                    for (var i = 0; i < 3; i++)
+                    for (var i = 0; i < labels.length; i++)
                       Expanded(
                         child: Semantics(
                           selected: tab == i,
                           button: true,
-                          label: ['聊天', '记录', '设置'][i],
+                          label: labels[i],
                           child: InkWell(
                             onTap: () => setState(() => tab = i),
                             borderRadius: BorderRadius.circular(24),
@@ -459,9 +468,10 @@ class _HomeShellState extends State<HomeShell> {
                                   children: [
                                     Icon(
                                       [
+                                        LucideIcons.newspaper,
                                         LucideIcons.messageCircle,
-                                        LucideIcons.history,
-                                        LucideIcons.settings2,
+                                        LucideIcons.mapPin,
+                                        LucideIcons.userRound,
                                       ][i],
                                       color: tab == i
                                           ? Colors.white
@@ -470,7 +480,7 @@ class _HomeShellState extends State<HomeShell> {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      ['聊天', '记录', '设置'][i],
+                                      labels[i],
                                       style: TextStyle(
                                         fontSize: 12,
                                         color: tab == i

@@ -24,6 +24,10 @@ async function poll(fn,message){
 async function fill(locator,value){await locator.click();await locator.press('Control+A');await locator.pressSequentially(value,{delay:10});await locator.press('Tab');}
 async function tap(page,name){await page.getByRole('button',{name,exact:typeof name==='string'}).first().evaluate(node=>node.click());await page.waitForTimeout(300);}
 async function shot(page,name){await page.mouse.move(0,0);await page.waitForTimeout(400);await page.screenshot({path:path.join(out,`nearby-${name}.png`)});}
+async function assertNavigation(page,visible=true){
+  for(const name of ['动态','聊天','附近','我'])await page.getByRole('button',{name,exact:true}).waitFor({state:visible?'visible':'hidden'});
+  assert.equal(await page.getByRole('button',{name:'设置',exact:true}).count(),0,'settings must not remain a tab');
+}
 
 (async()=>{
   const browser=await chromium.launch({channel:'chrome',headless:true});
@@ -44,7 +48,10 @@ async function shot(page,name){await page.mouse.move(0,0);await page.waitForTime
     const session=page.waitForResponse(r=>r.url().endsWith('/api/v1/session')&&r.request().method()==='POST');
     await tap(page,'进入校园');owner=await(await session).json();
     await page.getByText('校园里的声音',{exact:true}).waitFor();
-    await tap(page,'设置');await tap(page,/^性别/);await tap(page,'女');
+    await assertNavigation(page);
+    await tap(page,'我');await tap(page,/^性别/);
+    await shot(page,'gender-picker');
+    await tap(page,'女');
     await poll(async()=> (await api('GET','/me',owner.token)).gender==='female','gender did not persist');
     await shot(page,'gender');
 
@@ -53,8 +60,10 @@ async function shot(page,name){await page.mouse.move(0,0);await page.waitForTime
     let status=await api('GET','/nearby',peer.token);
     await api('PUT','/nearby/location',peer.token,{latitude:31.202,longitude:121.501,revision:status.revision});
 
-    await tap(page,'聊天');await tap(page,'附近的人');
+    await tap(page,'附近');
     await page.getByText('开启附近并展示我',{exact:true}).waitFor();
+    await assertNavigation(page);
+    assert.equal(await page.getByRole('button',{name:/返回|Back/}).count(),0,'nearby primary tab must not show a back button');
     assert.equal(puts,0,'nearby published before consent');
     assert.equal((await api('GET','/nearby',owner.token)).enabled,false);
     await shot(page,'opt-in');
@@ -67,6 +76,7 @@ async function shot(page,name){await page.mouse.move(0,0);await page.waitForTime
     await shot(page,'people');
     await tap(page,'打招呼');
     await page.getByRole('textbox',{name:'输入消息…'}).waitFor();
+    await assertNavigation(page,false);
     const conversation=await poll(async()=> (await api('GET','/conversations',peer.token))[0],'greeting conversation missing');
     await api('POST',`/nearby/${peer.user.id}/greet`,owner.token,{});
     let messages=await api('GET',`/conversations/${conversation.id}/messages`,peer.token);
@@ -89,6 +99,7 @@ async function shot(page,name){await page.mouse.move(0,0);await page.waitForTime
     await shot(page,'chat-cover');
     await tap(page,/返回|Back/);
     await page.getByText('关闭附近展示',{exact:true}).waitFor();
+    await assertNavigation(page);
     const oldRevision=(await api('GET','/nearby',owner.token)).revision;
     await tap(page,'关闭附近展示');
     await poll(async()=> !(await api('GET','/nearby',owner.token)).enabled,'sharing not disabled');
@@ -96,7 +107,11 @@ async function shot(page,name){await page.mouse.move(0,0);await page.waitForTime
     assert.equal(stale.status,409,'late old location restored sharing');
     assert(!(await api('GET','/nearby',peer.token)).items.some(p=>p.id===owner.user.id));
     assert.deepEqual(errors,[]);
-    console.log('PASS nearby + covers: opt-in, gender, coarse discovery, single greeting, real local frame, protected server poster, stale-location rejection.');
+    await tap(page,'聊天');
+    await page.getByText('聊天记录',{exact:true}).waitFor();
+    await page.getByRole('button',{name:/附近联测同学/}).waitFor();
+    await assertNavigation(page);
+    console.log('PASS nearby + covers: primary nearby tab, profile gender, inbox, opt-in, coarse discovery, single greeting, real local frame, protected server poster, stale-location rejection.');
   }catch(e){await shot(page,'failure');fs.writeFileSync(path.join(out,'nearby-failure.txt'),await page.locator('body').ariaSnapshot());throw e;}
   finally{await browser.close();for(const user of [owner,peer])if(user?.token)await api('DELETE','/me',user.token).catch(()=>{});}
 })().catch(e=>{console.error(e);process.exitCode=1;});
