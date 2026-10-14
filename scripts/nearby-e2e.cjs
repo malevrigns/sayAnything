@@ -35,9 +35,9 @@ async function assertNavigation(page,visible=true){
   const context=await browser.newContext({viewport:{width:390,height:844},geolocation:{latitude:31.2,longitude:121.5},permissions:['geolocation']});
   const page=await context.newPage();page.setDefaultTimeout(25000);
   const errors=[],posterResponses=[];
-  let puts=0,owner,peer;
+  let puts=0,greetings=0,owner,peer;
   page.on('pageerror',e=>errors.push(e.message));
-  page.on('request',r=>{if(r.method()==='PUT'&&r.url().endsWith('/nearby/location'))puts++;});
+  page.on('request',r=>{if(r.method()==='PUT'&&r.url().endsWith('/nearby/location'))puts++;if(r.method()==='POST'&&/\/nearby\/[^/]+\/greet$/.test(r.url()))greetings++;});
   page.on('response',r=>{if(r.url().includes('view=poster'))posterResponses.push(r);});
   await page.route('https://d8j0ntlcm91z4.cloudfront.net/**',route=>route.abort('failed'));
   try{
@@ -61,13 +61,31 @@ async function assertNavigation(page,visible=true){
     await api('PUT','/nearby/location',peer.token,{latitude:31.202,longitude:121.501,revision:status.revision});
 
     await tap(page,'附近');
-    await page.getByText('开启附近并展示我',{exact:true}).waitFor();
     await assertNavigation(page);
+    if(await page.getByRole('button',{name:'显示真实列表',exact:true}).count()){
+      // Mock labels merge into group semantics nodes; match their aria-label.
+      await page.locator('flt-semantics[aria-label="模拟数据 · 仅供预览"]').waitFor();
+      await page.locator('flt-semantics[aria-label^="晚风同学"]').waitFor();
+      const before=greetings;
+      await tap(page,'打招呼');
+      await page.getByText('这是模拟同学，仅供预览，不会发送招呼。',{exact:true}).or(page.locator('flt-semantics[aria-label="这是模拟同学，仅供预览，不会发送招呼。"]')).first().waitFor();
+      assert.equal(greetings,before,'mock greeting sent an API request');
+      assert.equal(puts,0,'mock preview published a position');
+      await shot(page,'mock-preview');
+      await tap(page,'显示真实列表');
+      assert.equal(await page.locator('flt-semantics[aria-label^="晚风同学"]').count(),0);
+    }
     assert.equal(await page.getByRole('button',{name:/返回|Back/}).count(),0,'nearby primary tab must not show a back button');
     assert.equal(puts,0,'nearby published before consent');
     assert.equal((await api('GET','/nearby',owner.token)).enabled,false);
+    assert.equal(await page.getByText('开启附近并展示我',{exact:true}).count(),0,'consent controls must live in settings');
+    await shot(page,'real-list-disabled');
+    await tap(page,'附近设置');
+    await page.getByText('开启附近并展示我',{exact:true}).waitFor();
     await shot(page,'opt-in');
     await tap(page,'开启附近并展示我');
+    await page.getByText('关闭附近展示',{exact:true}).waitFor();
+    await tap(page,'关闭附近设置');
     await page.getByRole('group',{name:/附近联测同学/}).waitFor();
     assert.equal(puts,1);
     status=await api('GET','/nearby',owner.token);
@@ -98,11 +116,13 @@ async function assertNavigation(page,visible=true){
     await poll(()=>posterResponses.some(r=>r.status()===200),'chat did not load server poster');
     await shot(page,'chat-cover');
     await tap(page,/返回|Back/);
-    await page.getByText('关闭附近展示',{exact:true}).waitFor();
     await assertNavigation(page);
+    await tap(page,'附近设置');
+    await page.getByText('关闭附近展示',{exact:true}).waitFor();
     const oldRevision=(await api('GET','/nearby',owner.token)).revision;
     await tap(page,'关闭附近展示');
     await poll(async()=> !(await api('GET','/nearby',owner.token)).enabled,'sharing not disabled');
+    await tap(page,'关闭附近设置');
     const stale=await fetch(origin+'/api/v1/nearby/location',{method:'PUT',headers:{Authorization:'Bearer '+owner.token,'Content-Type':'application/json'},body:JSON.stringify({latitude:31.2,longitude:121.5,revision:oldRevision})});
     assert.equal(stale.status,409,'late old location restored sharing');
     assert(!(await api('GET','/nearby',peer.token)).items.some(p=>p.id===owner.user.id));
@@ -111,7 +131,7 @@ async function assertNavigation(page,visible=true){
     await page.getByText('聊天记录',{exact:true}).waitFor();
     await page.getByRole('button',{name:/附近联测同学/}).waitFor();
     await assertNavigation(page);
-    console.log('PASS nearby + covers: primary nearby tab, profile gender, inbox, opt-in, coarse discovery, single greeting, real local frame, protected server poster, stale-location rejection.');
+    console.log('PASS nearby + covers: primary nearby tab, isolated mock preview, settings popup, profile gender, inbox, opt-in, coarse discovery, single greeting, real local frame, protected server poster, stale-location rejection.');
   }catch(e){await shot(page,'failure');fs.writeFileSync(path.join(out,'nearby-failure.txt'),await page.locator('body').ariaSnapshot());throw e;}
   finally{await browser.close();for(const user of [owner,peer])if(user?.token)await api('DELETE','/me',user.token).catch(()=>{});}
 })().catch(e=>{console.error(e);process.exitCode=1;});

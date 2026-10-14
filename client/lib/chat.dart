@@ -9,6 +9,7 @@ import 'design.dart';
 import 'media_draft.dart';
 import 'media_viewer.dart';
 import 'feed.dart';
+import 'page_activity.dart';
 
 class RoomsPage extends StatefulWidget {
   final Api api;
@@ -203,12 +204,23 @@ class _InboxPageState extends State<InboxPage> with WidgetsBindingObserver {
   String? error;
   Timer? timer;
   bool fetching = false;
+  bool _pageActive = false, _foreground = true, _active = false;
+  DateTime? _lastLoaded;
+  static const _pollInterval = Duration(seconds: 5);
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    load();
-    timer = Timer.periodic(const Duration(seconds: 5), (_) => load());
+    _foreground =
+        WidgetsBinding.instance.lifecycleState == null ||
+        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _pageActive = PageActivity.isActiveOf(context);
+    _syncActivity();
   }
 
   @override
@@ -220,21 +232,32 @@ class _InboxPageState extends State<InboxPage> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
+    _foreground = state == AppLifecycleState.resumed;
+    _syncActivity();
+  }
+
+  void _syncActivity() {
+    final active = _pageActive && _foreground;
+    if (_active == active) return;
+    _active = active;
+    timer?.cancel();
+    timer = null;
+    if (!active) return;
+    if (_lastLoaded == null ||
+        error != null ||
+        DateTime.now().difference(_lastLoaded!) >= _pollInterval) {
       load();
-      timer ??= Timer.periodic(const Duration(seconds: 5), (_) => load());
-    } else {
-      timer?.cancel();
-      timer = null;
     }
+    timer = Timer.periodic(_pollInterval, (_) => load());
   }
 
   Future<void> load() async {
-    if (fetching) return;
+    if (!mounted || !_active || fetching) return;
     fetching = true;
     try {
       final list = await widget.api.list('/conversations');
       if (mounted) {
+        _lastLoaded = DateTime.now();
         setState(() {
           conversations = list;
           error = null;
@@ -245,6 +268,13 @@ class _InboxPageState extends State<InboxPage> with WidgetsBindingObserver {
     } finally {
       fetching = false;
     }
+  }
+
+  Future<void> _reloadAfterRoute() async {
+    // A conversation may have been read even during a brief visit. If route
+    // visibility has not updated yet, the next activation will do this reload.
+    _lastLoaded = null;
+    await load();
   }
 
   @override
@@ -260,7 +290,7 @@ class _InboxPageState extends State<InboxPage> with WidgetsBindingObserver {
                   MaterialPageRoute(
                     builder: (_) => _SearchPage(api: widget.api),
                   ),
-                ).then((_) => load()),
+                ).then((_) => _reloadAfterRoute()),
           tooltip: '搜索聊天记录',
           icon: const Icon(LucideIcons.search, size: 20),
         ),
@@ -397,7 +427,7 @@ class _InboxPageState extends State<InboxPage> with WidgetsBindingObserver {
               ),
             ),
           );
-          load();
+          _reloadAfterRoute();
         },
       ),
     ),
@@ -584,6 +614,10 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
   String? error;
   bool sending = false, fetching = false, showLatest = false;
   Timer? timer;
+  bool _pageActive = false, _foreground = true, _active = false;
+  DateTime? _lastLoaded;
+  int _activityRevision = 0;
+  static const _pollInterval = Duration(seconds: 3);
   final body = TextEditingController(), scroll = ScrollController();
   late final media = MediaDraft(widget.api);
   String get path =>
@@ -595,8 +629,16 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     body.addListener(_draftChanged);
     media.addListener(_draftChanged);
     scroll.addListener(_scrollChanged);
-    load();
-    timer = Timer.periodic(const Duration(seconds: 3), (_) => load());
+    _foreground =
+        WidgetsBinding.instance.lifecycleState == null ||
+        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _pageActive = PageActivity.isActiveOf(context);
+    _syncActivity();
   }
 
   @override
@@ -627,20 +669,32 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
+    _foreground = state == AppLifecycleState.resumed;
+    _syncActivity();
+  }
+
+  void _syncActivity() {
+    final active = _pageActive && _foreground;
+    if (_active == active) return;
+    _active = active;
+    _activityRevision++;
+    timer?.cancel();
+    timer = null;
+    if (!active) return;
+    if (_lastLoaded == null ||
+        error != null ||
+        DateTime.now().difference(_lastLoaded!) >= _pollInterval) {
       load();
-      timer ??= Timer.periodic(const Duration(seconds: 3), (_) => load());
-    } else {
-      timer?.cancel();
-      timer = null;
     }
+    timer = Timer.periodic(_pollInterval, (_) => load());
   }
 
   String? _lastId(List<Data>? list) =>
       list == null || list.isEmpty ? null : '${list.last['id']}';
   Future<void> load({bool forceScroll = false}) async {
-    if (fetching) return;
+    if (!mounted || !_active || fetching) return;
     fetching = true;
+    final activityRevision = _activityRevision;
     final nearBottom =
         !scroll.hasClients ||
         scroll.position.maxScrollExtent - scroll.offset < 100;
@@ -648,13 +702,18 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     try {
       final list = await widget.api.list(path);
       if (!mounted) return;
+      _lastLoaded = DateTime.now();
       final changed = oldLastId != _lastId(list);
       setState(() {
         messages = list;
         error = null;
         if (changed && !nearBottom && !forceScroll) showLatest = true;
       });
-      if (forceScroll || changed && nearBottom) _scrollToLatest();
+      if (_active &&
+          activityRevision == _activityRevision &&
+          (forceScroll || changed && nearBottom)) {
+        _scrollToLatest();
+      }
     } catch (e) {
       if (mounted) setState(() => error = e.toString());
     } finally {
@@ -662,15 +721,24 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     }
   }
 
-  void _scrollToLatest() => WidgetsBinding.instance.addPostFrameCallback((_) {
-    if (!mounted || !scroll.hasClients) return;
-    scroll.animateTo(
-      scroll.position.maxScrollExtent,
-      duration: const Duration(milliseconds: 240),
-      curve: Curves.easeOut,
-    );
-    if (showLatest) setState(() => showLatest = false);
-  });
+  void _scrollToLatest() {
+    final activityRevision = _activityRevision;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted ||
+          !_active ||
+          activityRevision != _activityRevision ||
+          !scroll.hasClients) {
+        return;
+      }
+      scroll.animateTo(
+        scroll.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 240),
+        curve: Curves.easeOut,
+      );
+      if (showLatest) setState(() => showLatest = false);
+    });
+  }
+
   Future<void> send() async {
     if (sending || (body.text.trim().isEmpty && !media.isNotEmpty)) return;
     final draft = body.text;
@@ -685,6 +753,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       if (!mounted) return;
       if (body.text == draft) body.clear();
       media.clearSent();
+      _lastLoaded = null;
       await load(forceScroll: true);
     } catch (e) {
       if (mounted) toast(context, e);

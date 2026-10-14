@@ -7,6 +7,7 @@ import 'feed.dart';
 import 'chat.dart';
 import 'profile.dart';
 import 'nearby.dart';
+import 'page_activity.dart';
 
 class SayAnythingApp extends StatefulWidget {
   final Api api;
@@ -48,8 +49,8 @@ class _SayAnythingAppState extends State<SayAnythingApp> {
     builder: (context, _) => MaterialApp(
       title: 'sayAnything',
       debugShowCheckedModeBanner: false,
-      theme: appTheme(true),
-      darkTheme: appTheme(true),
+      theme: appTheme(true, reduceMotion: widget.api.reduceMotion),
+      darkTheme: appTheme(true, reduceMotion: widget.api.reduceMotion),
       themeMode: ThemeMode.dark,
       builder: (context, child) => ColoredBox(
         color: const Color(0xFF080808),
@@ -375,6 +376,82 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   static const labels = ['动态', '聊天', '附近', '我'];
   int tab = 0, revision = 0;
+  final _visited = <int>{0};
+  final _pages = <int, Widget>{};
+  String? _owner;
+  int _cacheEpoch = 0;
+
+  String get _identity => '${widget.api.origin}/${widget.api.user?['id']}';
+  @override
+  void initState() {
+    super.initState();
+    _owner = _identity;
+    widget.api.addListener(_accountChanged);
+  }
+
+  @override
+  void didUpdateWidget(HomeShell old) {
+    super.didUpdateWidget(old);
+    if (old.api != widget.api) {
+      old.api.removeListener(_accountChanged);
+      widget.api.addListener(_accountChanged);
+      _resetCache();
+    } else if (_owner != _identity) {
+      _resetCache();
+    }
+  }
+
+  void _resetCache() {
+    _owner = _identity;
+    _cacheEpoch++;
+    tab = 0;
+    _visited
+      ..clear()
+      ..add(0);
+    _pages.clear();
+  }
+
+  void _accountChanged() {
+    if (mounted && _owner != _identity) setState(_resetCache);
+  }
+
+  @override
+  void dispose() {
+    widget.api.removeListener(_accountChanged);
+    super.dispose();
+  }
+
+  void selectTab(int index) {
+    if (index == tab) return;
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() {
+      tab = index;
+      _visited.add(index);
+    });
+  }
+
+  Widget _page(int index) => _pages.putIfAbsent(
+    index,
+    () => ListenableBuilder(
+      listenable: widget.api,
+      builder: (context, _) => switch (index) {
+        0 => FeedPage(
+          key: ValueKey('feed$revision'),
+          api: widget.api,
+          onCompose: compose,
+          onSettings: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ProfilePage(api: widget.api, settings: true),
+            ),
+          ),
+        ),
+        1 => InboxPage(api: widget.api, onNew: () => selectTab(0)),
+        2 => NearbyPage(api: widget.api, embedded: true),
+        _ => ProfilePage(api: widget.api),
+      },
+    ),
+  );
   Future<void> compose() async {
     final sent = await Navigator.push<bool>(
       context,
@@ -384,33 +461,36 @@ class _HomeShellState extends State<HomeShell> {
       setState(() {
         tab = 0;
         revision++;
+        _pages.remove(0);
       });
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (widget.api.user == null) return const SizedBox.shrink();
     final keyboard = MediaQuery.viewInsetsOf(context).bottom > 0;
-    final pages = [
-      FeedPage(
-        key: ValueKey('feed$revision'),
-        api: widget.api,
-        onCompose: compose,
-        onSettings: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ProfilePage(api: widget.api, settings: true),
-          ),
-        ),
-      ),
-      InboxPage(api: widget.api, onNew: () => setState(() => tab = 0)),
-      NearbyPage(api: widget.api, embedded: true),
-      ProfilePage(api: widget.api),
-    ];
     return Scaffold(
       body: SafeArea(
         bottom: false,
-        child: KeyedSubtree(key: ValueKey('$tab-$revision'), child: pages[tab]),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            for (var index = 0; index < labels.length; index++)
+              if (_visited.contains(index))
+                Offstage(
+                  key: ValueKey('tab-$_cacheEpoch-$index'),
+                  offstage: index != tab,
+                  child: TickerMode(
+                    enabled: index == tab,
+                    child: PageActivity(
+                      active: index == tab,
+                      child: PrimaryScrollController.none(child: _page(index)),
+                    ),
+                  ),
+                ),
+          ],
+        ),
       ),
       floatingActionButton: tab == 0 && !keyboard
           ? Padding(
@@ -449,12 +529,14 @@ class _HomeShellState extends State<HomeShell> {
                           button: true,
                           label: labels[i],
                           child: InkWell(
-                            onTap: () => setState(() => tab = i),
+                            onTap: () => selectTab(i),
                             borderRadius: BorderRadius.circular(24),
                             child: AnimatedContainer(
-                              duration: widget.api.reduceMotion
+                              duration:
+                                  widget.api.reduceMotion ||
+                                      MediaQuery.disableAnimationsOf(context)
                                   ? Duration.zero
-                                  : const Duration(milliseconds: 200),
+                                  : const Duration(milliseconds: 120),
                               padding: const EdgeInsets.symmetric(vertical: 9),
                               decoration: BoxDecoration(
                                 color: tab == i

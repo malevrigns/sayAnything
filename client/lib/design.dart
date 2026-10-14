@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'page_transitions.dart';
 
 // Legacy semantic names remain for the existing screens; every value is neutral.
 const forest = Color(0xFF262626);
@@ -12,7 +13,7 @@ const muted = Color(0xFF999999);
 Color gray(double lightness, [double opacity = 1]) =>
     HSLColor.fromAHSL(opacity, 0, 0, lightness / 100).toColor();
 
-ThemeData appTheme(bool dark) {
+ThemeData appTheme(bool dark, {bool reduceMotion = false}) {
   const scheme = ColorScheme.dark(
     primary: Colors.white,
     onPrimary: Color(0xFF141414),
@@ -42,6 +43,12 @@ ThemeData appTheme(bool dark) {
     displayColor: Colors.white,
   );
   return ThemeData(
+    pageTransitionsTheme: PageTransitionsTheme(
+      builders: {
+        for (final platform in TargetPlatform.values)
+          platform: QuietPageTransitionsBuilder(reduceMotion: reduceMotion),
+      },
+    ),
     useMaterial3: true,
     colorScheme: scheme,
     brightness: Brightness.dark,

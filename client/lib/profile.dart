@@ -218,7 +218,7 @@ class ProfilePage extends StatelessWidget {
             const SizedBox(height: 23),
             const Center(
               child: Text(
-                'sayAnything · 1.4.1',
+                'sayAnything · 1.4.2',
                 style: TextStyle(
                   fontSize: 12,
                   color: Colors.white30,
@@ -499,7 +499,9 @@ class PrivacyPage extends StatelessWidget {
             null,
             () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => NearbyPage(api: api!)),
+              MaterialPageRoute(
+                builder: (_) => NearbyPage(api: api!, settingsOnly: true),
+              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -624,7 +626,7 @@ class AboutPage extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         const Text(
-          '1.4.1',
+          '1.4.2',
           textAlign: TextAlign.center,
           style: TextStyle(color: Colors.white38, fontSize: 12),
         ),

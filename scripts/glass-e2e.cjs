@@ -53,6 +53,9 @@ async function back(page) {
   const button = page.getByRole('button', { name: /返回|Back/ }).first();
   await button.waitFor();
   await button.click();
+  // Fade-through transitions keep the outgoing page tappable for 160ms;
+  // wait it out so a following back() targets the revealed page.
+  await page.waitForTimeout(350);
 }
 
 async function fillFlutter(locator, value) {
@@ -102,8 +105,9 @@ async function assertNavigation(page, visible = true) {
   const consoleErrors = [];
   const searchResponses = [];
   let videoRequests = 0;
+  let page;
   try {
-    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    page = await browser.newPage({ viewport: { width: 390, height: 844 } });
     page.on('response', async (response) => {
       if (response.url().includes('/conversations?q=')) {
         try { searchResponses.push({query:new URL(response.url()).searchParams.get('q'), data:await response.json()}); } catch {}
@@ -263,7 +267,11 @@ async function assertNavigation(page, visible = true) {
     await back(page);
 
     await page.getByRole('button', { name: '附近', exact: true }).click();
+    // Consent controls live in the settings popup; the main page shows the labelled mock preview.
+    await page.locator('flt-semantics[aria-label="模拟数据 · 仅供预览"]').waitFor();
+    await page.getByRole('button', { name: '附近设置', exact: true }).click();
     await page.getByText('开启附近并展示我', { exact: true }).waitFor();
+    await page.getByRole('button', { name: '关闭附近设置', exact: true }).click();
     await assertNavigation(page);
     assert.equal(await page.getByRole('button', { name: /返回|Back/ }).count(), 0, 'nearby primary tab must not have a back button');
 
@@ -329,6 +337,13 @@ async function assertNavigation(page, visible = true) {
     );
     assert.deepEqual(unexpectedConsoleErrors, [], `console errors: ${unexpectedConsoleErrors.join('\n')}`);
     console.log(`PASS glass UI: ${campus}; four tabs, brand settings, profile/nearby, fallback, real feed/comment/DM/room/search/settings/privacy, 390/360/430/1440.`);
+  } catch (error) {
+    try {
+      const labels = await page.evaluate(() => [...document.querySelectorAll('flt-semantics')].map((el) => el.getAttribute('aria-label')).filter(Boolean));
+      fs.writeFileSync(path.join(artifacts, 'glass-failure.txt'), JSON.stringify(labels, null, 1));
+    } catch (captureError) { console.error('snapshot capture failed:', captureError); }
+    try { await shot(page, 'failure'); } catch (captureError) { console.error('screenshot capture failed:', captureError); }
+    throw error;
   } finally {
     await browser.close();
   }

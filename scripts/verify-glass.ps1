@@ -20,7 +20,7 @@ try {
       Get-ChildItem -LiteralPath $webCache -Filter 'web_entrypoint.stamp' -File -Recurse |
         ForEach-Object { Remove-Item -LiteralPath $_.FullName }
     }
-    flutter build web --release --no-pub --dart-define=API_URL=http://localhost:8081 --no-web-resources-cdn
+    flutter build web --release --no-pub --dart-define=API_URL=http://localhost:8081 --dart-define=PREVIEW_NEARBY=true --no-web-resources-cdn
     if ($LASTEXITCODE -ne 0) { throw 'Flutter web build failed' }
   }
     if ($Android) {
