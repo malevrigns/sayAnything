@@ -34,10 +34,10 @@ async function checkDownloads() {
     );
     setDownload(downloadLinks.windows, data.windows === true);
     downloadLinks.android.querySelector('small').textContent = android
-      ? `${arm64 ? 'Android 64 位' : '安卓通用版'} · v1.4.1`
+      ? `${arm64 ? 'Android 64 位' : '安卓通用版'} · v1.5.0`
       : '安装包准备中';
     downloadLinks.windows.querySelector('small').textContent = data.windows
-      ? 'Windows x64 · v1.4.1'
+      ? 'Windows x64 · v1.5.0'
       : '安装包准备中';
     for (const link of variantLinks) {
       setDownload(link, data[link.dataset.downloadPlatform] === true);

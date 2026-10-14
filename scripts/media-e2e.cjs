@@ -84,7 +84,7 @@ async function shot(page, name) {
 }
 
 async function assertNavigation(page, visible = true) {
-  for (const name of ['动态', '聊天', '附近', '我']) {
+  for (const name of ['动态', '心动', '聊天', '附近', '我']) {
     await page.getByRole('button', { name, exact: true }).waitFor({ state: visible ? 'visible' : 'hidden' });
   }
   assert.equal(await page.getByRole('button', { name: '设置', exact: true }).count(), 0, 'settings must not remain a tab');

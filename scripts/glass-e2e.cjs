@@ -71,10 +71,10 @@ async function assertNoOverflow(page, width) {
 }
 
 async function assertSingleColumn(page) {
-  const nav = ['动态', '聊天', '附近', '我'];
+  const nav = ['动态', '心动', '聊天', '附近', '我'];
   const boxes = [];
   for (const name of nav) boxes.push(await page.getByRole('button', { name, exact: true }).boundingBox());
-  assert(boxes.every(Boolean), 'all four navigation controls should be visible');
+  assert(boxes.every(Boolean), 'all five navigation controls should be visible');
   const left = Math.min(...boxes.map((box) => box.x));
   const right = Math.max(...boxes.map((box) => box.x + box.width));
   assert(right - left <= 480, `desktop app content exceeded 480px (${right - left}px)`);
@@ -82,7 +82,7 @@ async function assertSingleColumn(page) {
 }
 
 async function assertNavigation(page, visible = true) {
-  const names = ['动态', '聊天', '附近', '我'];
+  const names = ['动态', '心动', '聊天', '附近', '我'];
   const boxes = [];
   for (const name of names) {
     const button = page.getByRole('button', { name, exact: true });
@@ -90,8 +90,8 @@ async function assertNavigation(page, visible = true) {
     if (visible) boxes.push(await button.boundingBox());
   }
   if (visible) {
-    assert(boxes.every(Boolean), 'all four tabs need layout boxes');
-    assert(boxes.every((box, index) => index === 0 || box.x > boxes[index - 1].x), 'tabs must be ordered 动态 / 聊天 / 附近 / 我');
+    assert(boxes.every(Boolean), 'all five tabs need layout boxes');
+    assert(boxes.every((box, index) => index === 0 || box.x > boxes[index - 1].x), 'tabs must be ordered 动态 / 心动 / 聊天 / 附近 / 我');
     assert(boxes.every((box) => Math.abs(box.y - boxes[0].y) < 2), 'tabs must share one bottom row');
     assert(boxes[0].y > page.viewportSize().height / 2, 'primary tabs must be at the bottom');
   }
@@ -336,7 +336,7 @@ async function assertNavigation(page, visible = true) {
       (message) => !message.includes('Failed to load resource: net::ERR_FAILED'),
     );
     assert.deepEqual(unexpectedConsoleErrors, [], `console errors: ${unexpectedConsoleErrors.join('\n')}`);
-    console.log(`PASS glass UI: ${campus}; four tabs, brand settings, profile/nearby, fallback, real feed/comment/DM/room/search/settings/privacy, 390/360/430/1440.`);
+    console.log(`PASS glass UI: ${campus}; five tabs, brand settings, profile/nearby, fallback, real feed/comment/DM/room/search/settings/privacy, 390/360/430/1440.`);
   } catch (error) {
     try {
       const labels = await page.evaluate(() => [...document.querySelectorAll('flt-semantics')].map((el) => el.getAttribute('aria-label')).filter(Boolean));

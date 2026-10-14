@@ -25,7 +25,7 @@ async function fill(locator,value){await locator.click();await locator.press('Co
 async function tap(page,name){await page.getByRole('button',{name,exact:typeof name==='string'}).first().evaluate(node=>node.click());await page.waitForTimeout(300);}
 async function shot(page,name){await page.mouse.move(0,0);await page.waitForTimeout(400);await page.screenshot({path:path.join(out,`nearby-${name}.png`)});}
 async function assertNavigation(page,visible=true){
-  for(const name of ['动态','聊天','附近','我'])await page.getByRole('button',{name,exact:true}).waitFor({state:visible?'visible':'hidden'});
+  for(const name of ['动态','心动','聊天','附近','我'])await page.getByRole('button',{name,exact:true}).waitFor({state:visible?'visible':'hidden'});
   assert.equal(await page.getByRole('button',{name:'设置',exact:true}).count(),0,'settings must not remain a tab');
 }
 

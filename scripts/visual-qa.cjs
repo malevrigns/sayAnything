@@ -22,7 +22,7 @@ async function revealPage(page){
   await page.screenshot({path:path.join(dir,'website-desktop.png'),fullPage:true});
   await page.screenshot({path:path.join(dir,'website-desktop-first-screen.png')});
   await page.getByRole('tab',{name:'话题房间'}).click();
-  assert.equal(await page.locator('#preview-image').getAttribute('src'),'/assets/app-rooms.png');
+  assert.match(await page.locator('#preview-image').getAttribute('src'),/^\.?\/assets\/app-rooms\.png$/,'rooms tab must show the rooms screenshot (absolute or GitHub Pages relative path)');
   await page.getByRole('tab',{name:'话题房间'}).press('ArrowRight');
   assert.equal(await page.getByRole('tab',{name:'校园广场'}).getAttribute('aria-selected'),'true');
   await page.getByRole('tab',{name:'校园广场'}).press('Home');
@@ -38,12 +38,12 @@ async function revealPage(page){
     const link=page.locator('#'+platform+'-download');
     const available=platform==='android'?(availability.androidArm64||availability.android):availability[platform];
     assert.equal(await link.getAttribute('aria-disabled'),String(!available));
-    if(available){const href=await link.getAttribute('href');if(platform==='android'&&availability.androidArm64)assert(href.endsWith('-arm64.apk'));const response=await fetch(origin+href,{method:'HEAD'});assert.equal(response.status,200);assert(Number(response.headers.get('content-length'))>1000000);}
+    if(available){const href=await link.getAttribute('href');if(platform==='android'&&availability.androidArm64)assert(href.endsWith('-arm64.apk'));const response=await fetch(new URL(href,origin+'/'),{method:'HEAD'});assert.equal(response.status,200);assert(Number(response.headers.get('content-length'))>1000000);}
   }
   for(const link of await page.locator('[data-download-platform]').all()){
     const key=await link.getAttribute('data-download-platform');
     assert.equal(await link.getAttribute('aria-disabled'),String(!availability[key]));
-    if(availability[key]){const href=await link.getAttribute('href');assert.equal((await fetch(origin+href,{method:'HEAD'})).status,200);}
+    if(availability[key]){const href=await link.getAttribute('href');assert.equal((await fetch(new URL(href,origin+'/'),{method:'HEAD'})).status,200);}
   }
   for(const width of [390,360]){
    await page.setViewportSize({width,height:844});await page.goto(origin);await revealPage(page);

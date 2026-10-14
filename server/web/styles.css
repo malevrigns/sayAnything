@@ -570,7 +570,7 @@ body.motion-ready .reveal.is-visible{opacity:1;transform:none}
   .phone-main{width:210px;margin-top:8px}
   .phone-back{width:160px;top:8px}
   .download-panel{padding:28px 20px 22px;border-radius:14px}
-  .wordmark{letter-spacing:-3px;margin-top:28px}
+  .wordmark{font-size:clamp(44px,14vw,64px);letter-spacing:-3px;margin-top:28px}
   .footer-inner{flex-direction:column;align-items:flex-start;gap:12px;padding:18px 0}
 }
 

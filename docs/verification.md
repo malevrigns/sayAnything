@@ -1,5 +1,16 @@
 # 交付验证记录
 
+## 1.5 心动匹配与资料卡（2026-10-14）
+
+- 底栏新增「心动」，顺序 动态 / 心动 / 聊天 / 附近 / 我。同校匿名资料卡堆叠，拖拽或按钮表示心动 / 跳过，互相心动即配对并进入普通私聊；「喜欢我」「配对」入口；「我」页新增简介、年级、标签。候选可见性、屏蔽、每日额度、配对与会话创建全部在 Go。
+- Go：`gofmt -l .` 为空，`go vet ./...` 通过，`go test ./... -count=1` 通过。新增 `discover_test.go` 12 项：校园隔离、双向屏蔽、自我排除、已滑排除、互相心动只建一个配对和一段会话、重复操作幂等且不重复扣额度、每日 50 次后 429、跳过后改为心动、关闭接收私信者不可见且其心动被 403 拒绝、简介 / 年级 / 标签校验、过期鉴权上下文的字段合并、删除身份级联与迁移幂等、公开配置与写入校验一致。
+- 接口联调（临时端口与临时库，curl）：`/config` 含 `profile` 与 `discover` 段；`PATCH /me` 写入简介 / 年级 / 标签，未知标签返回「兴趣标签只能从列表中选择」；B 心动 A 后 A 的 `likesMe=1` 且出现在 `/discover/likes`；A 心动 B 返回 `matched:true`，`/discover/matches` 与 `/conversations` 的会话 ID 一致；重复心动返回同一会话且不再扣额度。`distanceLabel` 仅在双方粗略位置均未过期且约 5 公里内出现，响应中不含坐标或 `distanceKm`；本人关闭接收私信后心动返回 403「请先开启接收私信」，跳过仍为 200。
+- Flutter：`flutter analyze --no-pub` 无问题；`flutter test --no-pub` 58 项通过、1 项跳过（1.4.2 为 42 项）。新增 `discover_test.dart` 16 项：首卡渲染、左右滑动与短拖回弹、配对弹窗与「去聊天」、额度耗尽禁用、403 回弹、空牌堆、性别筛选、隐藏时零请求与返回刷新、喜欢我列表与下拉刷新、配对列表、「我」页简介 / 年级 / 标签编辑。
+- Web 预览构建 1.5.0+8（`PREVIEW_NEARBY=true`）。e2e 后端以 1.4.2 期 `.tools/qa.db` 的副本启动，迁移后即提供 1.5 配置；三组端到端通过：nearby（附近主栏、模拟预览、设置弹窗、性别、招呼、真实视频帧、服务端封面、过期位置拒绝）、media（选文件、图片查看、真实视频播放、评论 / 房间 / 私聊附件）、glass（五栏、品牌设置入口、广场 / 评论 / 私聊 / 房间 / 搜索 / 设置 / 隐私，390/360/430/1440）。后端参数 `PORT=8081 DB_PATH=<副本> MEDIA_DIR=<临时目录> FFMPEG_PATH=.tools/ffmpeg/ffmpeg-9.0.1-essentials_build/bin/ffmpeg.exe ALLOWED_ORIGIN=http://localhost:8090`，预览为 `node scripts/preview.cjs`。`ALLOWED_ORIGIN` 必须与脚本打开的 `http://localhost:8090` 逐字一致，写成 `127.0.0.1` 会让浏览器端全部停在欢迎页。
+- 官网：主线官网为 2026-09-21 的手写版，推送 `server/web/**` 时由 GitHub Pages 工作流发布。`scripts/visual-qa.cjs` 改为接受 GitHub Pages 使用的相对资源路径（`./assets/…`、`./downloads/…`）；修复 360px 宽度下页脚大字 `.wordmark` 因 64px 字号下限造成的 12px 横向溢出（窄屏改为 `clamp(44px,14vw,64px)`，640px 以上不变）；`site.js` 的下载标签改为 v1.5.0。`node scripts/visual-qa.cjs` 对 Go 实际服务（8080）通过：1440/390/360 布局、键盘控件、FAQ、素材对话框、移动导航、真实下载状态。GitHub Pages 站点没有 `/api`，其下载区按设计显示「暂时无法检查」，实际下载仍由 Go 服务提供。
+- 发行物：验证时 `dist/` 仍是 1.4.2 的安装包与清单，1.5 发行包需运行 `scripts/build.ps1 -Windows -Android -Online`（本机 Gradle 缓存为空，Android 必须在线）。`scripts/start.ps1` 现在会在 `dist/sayanything-server.exe` 旧于 Go 源码时改用 `go run .` 并提示。
+- 局限：未做 Android 真机安装验证；Go race detector 未运行（CGO 关闭）；减少动态效果下的卡片飞出动画只做了代码审读；3 层玻璃卡片叠放的真机性能未实测。
+
 ## 1.4.2 导航性能与附近预览（2026-09-11）
 
 - 已访问的主 Tab 才缓存并保持滚动位置，只绘制当前 Tab；子页面改为 160ms 渐隐过渡并尊重减弱动画。缓存页通过 PageActivity 感知可见性，隐藏时暂停私信/会话轮询，返回附近页只静默刷新、不自动请求定位。
