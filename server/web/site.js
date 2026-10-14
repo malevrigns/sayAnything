@@ -170,3 +170,47 @@ if ('IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: re
   );
   document.querySelectorAll('.reveal').forEach((el) => observer.observe(el));
 }
+
+const heroVideo = document.querySelector('.hero-video');
+const heroSection = document.querySelector('.hero');
+if (heroVideo && heroSection) {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    // CSS hides the video and the photo shows; make sure it does not play or download further.
+    heroVideo.removeAttribute('autoplay');
+    heroVideo.pause();
+  } else {
+    let heroVisible = true;
+    const hideHeroVideo = () => {
+      heroVideo.pause();
+      heroVideo.style.display = 'none';
+    };
+    const syncHeroVideo = () => {
+      if (heroVideo.style.display === 'none') return;
+      if (document.hidden || !heroVisible) {
+        heroVideo.pause();
+        return;
+      }
+      const playing = heroVideo.play();
+      if (playing && typeof playing.catch === 'function') {
+        // AbortError just means a pause() interrupted this play(); anything else means autoplay is blocked.
+        playing.catch((err) => {
+          if (!err || err.name !== 'AbortError') hideHeroVideo();
+        });
+      }
+    };
+    heroVideo.addEventListener('error', hideHeroVideo);
+    heroVideo.querySelectorAll('source').forEach((source) => source.addEventListener('error', hideHeroVideo));
+    document.addEventListener('visibilitychange', syncHeroVideo);
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) heroVisible = entry.isIntersecting;
+          syncHeroVideo();
+        },
+        { threshold: 0.05 }
+      ).observe(heroSection);
+    } else {
+      syncHeroVideo();
+    }
+  }
+}

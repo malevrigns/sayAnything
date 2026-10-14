@@ -949,47 +949,54 @@ Future<void> _openMatch(
         strong: true,
         radius: 28,
         padding: const EdgeInsets.fromLTRB(24, 26, 24, 18),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Icon(
-              LucideIcons.heartHandshake,
-              size: 30,
-              color: Colors.white70,
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              '心动了',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              '你和“$alias”互相喜欢，可以开始聊天了。',
-              style: const TextStyle(
-                fontSize: 13,
-                color: Colors.white60,
-                height: 1.7,
+        // A bare Dialog merges plain text into the dialog node, which the
+        // web engine does not voice. Keep the copy as explicit nodes, as
+        // AlertDialog does for its content.
+        child: Semantics(
+          container: true,
+          explicitChildNodes: true,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(
+                LucideIcons.heartHandshake,
+                size: 30,
+                color: Colors.white70,
               ),
-            ),
-            const SizedBox(height: 22),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialog, false),
-                  child: const Text('继续看看'),
+              const SizedBox(height: 16),
+              const Text(
+                '心动了',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                '你和“$alias”互相喜欢，可以开始聊天了。',
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Colors.white60,
+                  height: 1.7,
                 ),
-                if (id is String && id.isNotEmpty) ...[
-                  const SizedBox(width: 6),
-                  FilledButton(
-                    onPressed: () => Navigator.pop(dialog, true),
-                    child: const Text('去聊天'),
+              ),
+              const SizedBox(height: 22),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(dialog, false),
+                    child: const Text('继续看看'),
                   ),
+                  if (id is String && id.isNotEmpty) ...[
+                    const SizedBox(width: 6),
+                    FilledButton(
+                      onPressed: () => Navigator.pop(dialog, true),
+                      child: const Text('去聊天'),
+                    ),
+                  ],
                 ],
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     ),

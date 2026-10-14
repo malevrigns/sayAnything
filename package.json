@@ -7,6 +7,7 @@
     "test:e2e": "node scripts/glass-e2e.cjs",
     "test:media": "node scripts/media-e2e.cjs",
     "test:nearby": "node scripts/nearby-e2e.cjs",
+    "test:discover": "node scripts/discover-e2e.cjs",
     "test:downloads": "node scripts/verify-downloads.cjs",
     "test:visual": "node scripts/visual-qa.cjs",
     "preview:client": "node scripts/preview.cjs"

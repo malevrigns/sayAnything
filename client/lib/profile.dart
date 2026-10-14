@@ -309,46 +309,52 @@ class ProfilePage extends StatelessWidget {
             strong: true,
             radius: 32,
             padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        '性别',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w500,
+            // A bare Dialog merges plain text into the dialog node, which the web
+            // engine does not voice; keep the copy as explicit nodes like AlertDialog.
+            child: Semantics(
+              container: true,
+              explicitChildNodes: true,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          '性别',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
-                    ),
-                    IconButton(
-                      tooltip: '关闭性别选择',
-                      onPressed: () => Navigator.pop(dialog),
-                      icon: const Icon(LucideIcons.x, size: 20),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  '只展示你选择的资料，也可以不透露。',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.white60,
-                    height: 1.7,
+                      IconButton(
+                        tooltip: '关闭性别选择',
+                        onPressed: () => Navigator.pop(dialog),
+                        icon: const Icon(LucideIcons.x, size: 20),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 24),
-                GlassChoiceBar<String>(
-                  value: current,
-                  options: genderOptions.entries
-                      .map((entry) => (value: entry.key, label: entry.value))
-                      .toList(),
-                  onChanged: (value) => Navigator.pop(dialog, value),
-                ),
-              ],
+                  const SizedBox(height: 8),
+                  const Text(
+                    '只展示你选择的资料，也可以不透露。',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.white60,
+                      height: 1.7,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  GlassChoiceBar<String>(
+                    value: current,
+                    options: genderOptions.entries
+                        .map((entry) => (value: entry.key, label: entry.value))
+                        .toList(),
+                    onChanged: (value) => Navigator.pop(dialog, value),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -436,47 +442,53 @@ class ProfilePage extends StatelessWidget {
           strong: true,
           radius: 28,
           padding: const EdgeInsets.fromLTRB(24, 22, 24, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      '年级',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w500,
+          // A bare Dialog merges plain text into the dialog node, which the web
+          // engine does not voice; keep the copy as explicit nodes like AlertDialog.
+          child: Semantics(
+            container: true,
+            explicitChildNodes: true,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        '年级',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
+                    IconButton(
+                      tooltip: '关闭年级选择',
+                      onPressed: () => Navigator.pop(dialog),
+                      icon: const Icon(LucideIcons.x, size: 20),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  grades.isEmpty ? '当前校园服务还没有提供年级选项。' : '只展示你选择的资料，也可以不填写。',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Colors.white60,
+                    height: 1.7,
                   ),
-                  IconButton(
-                    tooltip: '关闭年级选择',
-                    onPressed: () => Navigator.pop(dialog),
-                    icon: const Icon(LucideIcons.x, size: 20),
+                ),
+                // Four choices per bar keep labels readable on narrow phones.
+                for (var i = 0; i < options.length; i += 4) ...[
+                  SizedBox(height: i == 0 ? 24 : 8),
+                  GlassChoiceBar<String>(
+                    value: current,
+                    options: options.skip(i).take(4).toList(),
+                    onChanged: (value) => Navigator.pop(dialog, value),
                   ),
                 ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                grades.isEmpty ? '当前校园服务还没有提供年级选项。' : '只展示你选择的资料，也可以不填写。',
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: Colors.white60,
-                  height: 1.7,
-                ),
-              ),
-              // Four choices per bar keep labels readable on narrow phones.
-              for (var i = 0; i < options.length; i += 4) ...[
-                SizedBox(height: i == 0 ? 24 : 8),
-                GlassChoiceBar<String>(
-                  value: current,
-                  options: options.skip(i).take(4).toList(),
-                  onChanged: (value) => Navigator.pop(dialog, value),
-                ),
               ],
-            ],
+            ),
           ),
         ),
       ),
@@ -533,92 +545,101 @@ class _TagPickerState extends State<_TagPicker> {
         strong: true,
         radius: 28,
         padding: const EdgeInsets.fromLTRB(24, 22, 24, 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    '兴趣标签',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500),
-                  ),
-                ),
-                IconButton(
-                  tooltip: '关闭标签选择',
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(LucideIcons.x, size: 20),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              policy.tags.isEmpty
-                  ? '当前校园服务还没有提供标签。'
-                  : '最多选 ${policy.maxTags} 个，让心动更有方向。',
-              style: const TextStyle(
-                fontSize: 13,
-                color: Colors.white60,
-                height: 1.7,
-              ),
-            ),
-            if (policy.tags.isNotEmpty) ...[
-              const SizedBox(height: 20),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final tag in policy.tags)
-                    FilterChip(
-                      label: Text(tag),
-                      labelStyle: TextStyle(
-                        color: chosen.contains(tag)
-                            ? Colors.white
-                            : Colors.white60,
-                      ),
-                      selected: chosen.contains(tag),
-                      showCheckmark: false,
-                      onSelected: full && !chosen.contains(tag)
-                          ? null
-                          : (selected) => setState(() {
-                              if (selected) {
-                                chosen.add(tag);
-                              } else {
-                                chosen.remove(tag);
-                              }
-                            }),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 18),
+        // A bare Dialog merges plain text into the dialog node, which the web
+        // engine does not voice; keep the copy as explicit nodes like AlertDialog.
+        child: Semantics(
+          container: true,
+          explicitChildNodes: true,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Row(
                 children: [
-                  Expanded(
+                  const Expanded(
                     child: Text(
-                      '已选 ${chosen.length} / ${policy.maxTags}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.white38,
+                      '兴趣标签',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
-                  TextButton(
+                  IconButton(
+                    tooltip: '关闭标签选择',
                     onPressed: () => Navigator.pop(context),
-                    child: const Text('取消'),
-                  ),
-                  const SizedBox(width: 4),
-                  FilledButton(
-                    onPressed: () => Navigator.pop(
-                      context,
-                      policy.tags.where(chosen.contains).toList(),
-                    ),
-                    child: const Text('保存'),
+                    icon: const Icon(LucideIcons.x, size: 20),
                   ),
                 ],
               ),
+              const SizedBox(height: 8),
+              Text(
+                policy.tags.isEmpty
+                    ? '当前校园服务还没有提供标签。'
+                    : '最多选 ${policy.maxTags} 个，让心动更有方向。',
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Colors.white60,
+                  height: 1.7,
+                ),
+              ),
+              if (policy.tags.isNotEmpty) ...[
+                const SizedBox(height: 20),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final tag in policy.tags)
+                      FilterChip(
+                        label: Text(tag),
+                        labelStyle: TextStyle(
+                          color: chosen.contains(tag)
+                              ? Colors.white
+                              : Colors.white60,
+                        ),
+                        selected: chosen.contains(tag),
+                        showCheckmark: false,
+                        onSelected: full && !chosen.contains(tag)
+                            ? null
+                            : (selected) => setState(() {
+                                if (selected) {
+                                  chosen.add(tag);
+                                } else {
+                                  chosen.remove(tag);
+                                }
+                              }),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '已选 ${chosen.length} / ${policy.maxTags}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.white38,
+                        ),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('取消'),
+                    ),
+                    const SizedBox(width: 4),
+                    FilledButton(
+                      onPressed: () => Navigator.pop(
+                        context,
+                        policy.tags.where(chosen.contains).toList(),
+                      ),
+                      child: const Text('保存'),
+                    ),
+                  ],
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

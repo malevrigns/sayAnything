@@ -157,6 +157,12 @@ img{max-width:100%;display:block}
   position:absolute;inset:0;width:100%;height:100%;
   object-fit:cover;object-position:center 55%;z-index:-3;
 }
+/* Generated loop (landing-video/). Same layer as .hero-photo and later in source
+   order, so it paints above the photo and below .hero-veil. */
+.hero-video{
+  position:absolute;inset:0;width:100%;height:100%;
+  object-fit:cover;z-index:-3;
+}
 .hero-veil{
   position:absolute;inset:0;z-index:-2;
   background:
@@ -578,4 +584,5 @@ body.motion-ready .reveal.is-visible{opacity:1;transform:none}
   html{scroll-behavior:auto}
   *,*::before,*::after{transition:none!important;animation:none!important}
   body.motion-ready .reveal{opacity:1;transform:none}
+  .hero-video{display:none}
 }
