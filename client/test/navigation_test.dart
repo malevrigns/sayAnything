@@ -22,12 +22,15 @@ class NavigationApi extends Api {
     if (path == '/nearby') {
       return {'enabled': false, 'revision': 0, 'radiusKm': 5, 'items': []};
     }
+    if (path.startsWith('/discover')) {
+      return {'items': <Data>[], 'likesMe': 0, 'likesLeft': 50};
+    }
     return <Data>[];
   }
 }
 
 void main() {
-  testWidgets('four primary tabs and brand settings route stay connected', (
+  testWidgets('five primary tabs and brand settings route stay connected', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(360, 844);
@@ -42,9 +45,15 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    for (final label in ['动态', '聊天', '附近', '我']) {
+    for (final label in ['动态', '心动', '聊天', '附近', '我']) {
       expect(find.text(label), findsOneWidget);
     }
+    await tester.tap(find.text('心动'));
+    await tester.pumpAndSettle();
+    expect(find.text('心动匹配'), findsOneWidget);
+    expect(find.text('这会儿没有新的同学了'), findsOneWidget);
+    expect(find.byTooltip('返回'), findsNothing);
+    expect(api.requests, contains('GET /discover'));
     await tester.tap(find.text('聊天'));
     await tester.pumpAndSettle();
     expect(find.text('聊天记录'), findsOneWidget);

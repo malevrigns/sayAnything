@@ -35,13 +35,16 @@ type Server struct {
 	closeOnce   sync.Once
 }
 type User struct {
-	ID        string `json:"id"`
-	Alias     string `json:"alias"`
-	Campus    string `json:"campus"`
-	Avatar    int    `json:"avatar"`
-	AllowDM   bool   `json:"allowDM"`
-	CreatedAt string `json:"createdAt"`
-	Gender    string `json:"gender"`
+	ID        string   `json:"id"`
+	Alias     string   `json:"alias"`
+	Campus    string   `json:"campus"`
+	Avatar    int      `json:"avatar"`
+	AllowDM   bool     `json:"allowDM"`
+	CreatedAt string   `json:"createdAt"`
+	Gender    string   `json:"gender"`
+	Bio       string   `json:"bio"`
+	Grade     string   `json:"grade"`
+	Tags      []string `json:"tags"`
 }
 type Post struct {
 	ID, AuthorID, Alias, Campus, Body, Category, CreatedAt string
@@ -131,6 +134,10 @@ func NewServer(c Config) (*Server, error) {
 		db.Close()
 		return nil, err
 	}
+	if err = migrateDiscover(db); err != nil {
+		db.Close()
+		return nil, err
+	}
 	s := &Server{db: db, cfg: c, mux: http.NewServeMux(), authLimiter: newRateLimiter(c.RateLimit), anonLimiter: newRateLimiter(c.RateLimit), mediaSlots: make(chan struct{}, 2), stopCleanup: make(chan struct{})}
 	for i := range s.uploadSlots {
 		s.uploadSlots[i] = make(chan struct{}, 1)
@@ -141,6 +148,9 @@ func NewServer(c Config) (*Server, error) {
 	s.cleanupNearby()
 	s.cleanupWG.Add(1)
 	go s.nearbyCleanupLoop()
+	s.cleanupDiscover()
+	s.cleanupWG.Add(1)
+	go s.discoverCleanupLoop()
 	s.routes()
 	return s, nil
 }
@@ -161,6 +171,10 @@ func (s *Server) routes() {
 	s.mux.Handle("PUT /api/v1/nearby/location", s.auth(http.HandlerFunc(s.nearbyLocation)))
 	s.mux.Handle("DELETE /api/v1/nearby/location", s.auth(http.HandlerFunc(s.nearbyLocation)))
 	s.mux.Handle("POST /api/v1/nearby/{id}/greet", s.auth(http.HandlerFunc(s.nearbyGreet)))
+	s.mux.Handle("GET /api/v1/discover", s.auth(http.HandlerFunc(s.discover)))
+	s.mux.Handle("GET /api/v1/discover/likes", s.auth(http.HandlerFunc(s.discoverLikes)))
+	s.mux.Handle("GET /api/v1/discover/matches", s.auth(http.HandlerFunc(s.discoverMatches)))
+	s.mux.Handle("POST /api/v1/discover/{id}/swipe", s.auth(http.HandlerFunc(s.discoverSwipe)))
 	s.mux.Handle("GET /api/v1/posts", s.auth(http.HandlerFunc(s.posts)))
 	s.mux.Handle("POST /api/v1/posts", s.auth(http.HandlerFunc(s.posts)))
 	s.mux.Handle("GET /api/v1/posts/{id}", s.auth(http.HandlerFunc(s.postByID)))
@@ -210,9 +224,7 @@ func (s *Server) auth(next http.Handler) http.Handler {
 			return
 		}
 		h := sha256.Sum256([]byte(v))
-		var u User
-		var allow int
-		err := s.db.QueryRowContext(r.Context(), `SELECT u.id,u.alias,u.campus,u.avatar,u.allow_dm,u.created_at,u.gender FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>?`, hex.EncodeToString(h[:]), now()).Scan(&u.ID, &u.Alias, &u.Campus, &u.Avatar, &allow, &u.CreatedAt, &u.Gender)
+		u, err := scanUser(s.db.QueryRowContext(r.Context(), `SELECT `+userColumns("u")+` FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>?`, hex.EncodeToString(h[:]), now()))
 		if err != nil {
 			if !s.anonLimiter.allow(clientIP(r)) {
 				fail(w, 429, "too many requests")
@@ -221,7 +233,6 @@ func (s *Server) auth(next http.Handler) http.Handler {
 			fail(w, 401, "登录已失效，请重新登录")
 			return
 		}
-		u.AllowDM = allow != 0
 		if !s.authLimiter.allow("user:" + u.ID) {
 			fail(w, 429, "too many requests")
 			return
@@ -291,6 +302,12 @@ func fail(w http.ResponseWriter, status int, msg string) {
 		"admin authentication required": "需要管理员身份", "could not list reports": "暂时无法加载举报", "could not update report": "暂时无法处理举报",
 		"report not found": "举报不存在", "download not found": "下载文件尚未发布",
 		"could not update read state": "暂时无法更新已读状态", "could not update block": "暂时无法更新屏蔽状态",
+		"bio too long": "简介最多 120 字", "unknown grade": "年级选项不正确", "unknown tag": "兴趣标签只能从列表中选择",
+		"too many tags": "兴趣标签最多选择 5 个", "duplicate tag": "兴趣标签不能重复",
+		"invalid gender filter": "性别筛选只能选择男或女", "invalid swipe action": "操作只能是心动或跳过", "cannot like yourself": "不能对自己操作",
+		"profile unavailable": "对方暂时无法匹配", "daily like limit reached": "今天的心动次数已用完，请明天再试",
+		"could not save swipe": "暂时无法保存操作，请稍后再试", "could not load discover": "暂时无法加载心动匹配",
+		"could not load likes": "暂时无法加载喜欢我的人", "could not load matches": "暂时无法加载配对列表",
 	}
 	if translated, ok := translations[msg]; ok {
 		msg = translated

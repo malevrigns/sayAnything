@@ -54,5 +54,7 @@ func (s *Server) policy(w http.ResponseWriter, r *http.Request) {
 		"categories": postCategories,
 		"limits":     map[string]int{"postCharacters": maxPostCharacters, "messageCharacters": maxMessageCharacters, "campusCharacters": maxCampusCharacters, "aliasCharacters": maxAliasCharacters},
 		"media":      map[string]any{"maxAttachments": maxAttachments, "maxImageBytes": maxImageBytes, "maxVideoBytes": maxVideoBytes, "maxTotalBytes": maxTotalBytes, "imageExtensions": images, "videoExtensions": videos},
+		"profile":    map[string]any{"bioCharacters": maxBioCharacters, "maxTags": maxProfileTags, "tags": profileTags, "grades": profileGrades},
+		"discover":   map[string]any{"dailyLikes": discoverDailyLikes},
 	})
 }

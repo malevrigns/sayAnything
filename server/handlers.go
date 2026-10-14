@@ -43,7 +43,7 @@ func (s *Server) session(w http.ResponseWriter, r *http.Request) {
 		fail(w, 500, "could not create session")
 		return
 	}
-	writeJSON(w, 201, map[string]any{"token": raw, "user": User{ID: id, Alias: alias, Campus: in.Campus, Avatar: avatar, AllowDM: true, CreatedAt: created, Gender: "undisclosed"}})
+	writeJSON(w, 201, map[string]any{"token": raw, "user": User{ID: id, Alias: alias, Campus: in.Campus, Avatar: avatar, AllowDM: true, CreatedAt: created, Gender: "undisclosed", Tags: []string{}}})
 }
 func sha256String(v string) string { h := sha256.Sum256([]byte(v)); return hex.EncodeToString(h[:]) }
 func timeAdd(days int) string {
@@ -59,6 +59,9 @@ func (s *Server) me(w http.ResponseWriter, r *http.Request) {
 			Alias   *string         `json:"alias"`
 			AllowDM *bool           `json:"allowDM"`
 			Gender  json.RawMessage `json:"gender"`
+			Bio     *string         `json:"bio"`
+			Grade   *string         `json:"grade"`
+			Tags    *[]string       `json:"tags"`
 		}
 		if !decodeBody(w, r, &in) {
 			return
@@ -77,13 +80,37 @@ func (s *Server) me(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
+		// bio, grade and tags may each be cleared with an empty value, but a
+		// non-empty value must stay within the published profile limits.
+		if in.Bio != nil {
+			*in.Bio = strings.TrimSpace(*in.Bio)
+			if runeLen(*in.Bio) > maxBioCharacters {
+				fail(w, 400, "bio too long")
+				return
+			}
+		}
+		if in.Grade != nil && *in.Grade != "" && !validGrade(*in.Grade) {
+			fail(w, 400, "unknown grade")
+			return
+		}
+		if in.Tags != nil {
+			if *in.Tags == nil {
+				*in.Tags = []string{}
+			}
+			if msg := validateTags(*in.Tags); msg != "" {
+				fail(w, 400, msg)
+				return
+			}
+		}
 		tx, err := s.db.BeginTx(r.Context(), nil)
 		if err == nil {
 			defer tx.Rollback()
 			// Auth may predate another profile PATCH. Merge only supplied fields
 			// into the current row while holding the transaction.
-			err = tx.QueryRowContext(r.Context(), `SELECT alias,campus,avatar,allow_dm,created_at,gender FROM users WHERE id=?`, u.ID).Scan(&u.Alias, &u.Campus, &u.Avatar, &u.AllowDM, &u.CreatedAt, &u.Gender)
+			var tags string
+			err = tx.QueryRowContext(r.Context(), `SELECT alias,campus,avatar,allow_dm,created_at,gender,bio,grade,`+tagsColumn("users.id")+` FROM users WHERE id=?`, u.ID).Scan(&u.Alias, &u.Campus, &u.Avatar, &u.AllowDM, &u.CreatedAt, &u.Gender, &u.Bio, &u.Grade, &tags)
 			if err == nil {
+				u.Tags = splitTags(tags)
 				if in.Alias != nil {
 					u.Alias = *in.Alias
 				}
@@ -93,7 +120,17 @@ func (s *Server) me(w http.ResponseWriter, r *http.Request) {
 				if len(in.Gender) > 0 {
 					u.Gender = gender
 				}
-				_, err = tx.ExecContext(r.Context(), `UPDATE users SET alias=?,allow_dm=?,gender=? WHERE id=?`, u.Alias, u.AllowDM, u.Gender, u.ID)
+				if in.Bio != nil {
+					u.Bio = *in.Bio
+				}
+				if in.Grade != nil {
+					u.Grade = *in.Grade
+				}
+				_, err = tx.ExecContext(r.Context(), `UPDATE users SET alias=?,allow_dm=?,gender=?,bio=?,grade=? WHERE id=?`, u.Alias, u.AllowDM, u.Gender, u.Bio, u.Grade, u.ID)
+			}
+			if err == nil && in.Tags != nil {
+				u.Tags = *in.Tags
+				err = replaceTags(r.Context(), tx, u.ID, u.Tags)
 			}
 			if err == nil && in.AllowDM != nil && !*in.AllowDM {
 				err = invalidateNearby(r, tx, u.ID)
@@ -818,7 +855,7 @@ func (s *Server) blocks(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(204)
 		return
 	}
-	rows, e := s.db.QueryContext(r.Context(), `SELECT x.id,x.alias,x.campus,x.avatar,x.allow_dm,x.created_at,x.gender FROM blocks b JOIN users x ON x.id=b.blocked_id WHERE b.blocker_id=?`, u.ID)
+	rows, e := s.db.QueryContext(r.Context(), `SELECT `+userColumns("x")+` FROM blocks b JOIN users x ON x.id=b.blocked_id WHERE b.blocker_id=?`, u.ID)
 	if e != nil {
 		fail(w, 500, "could not list blocks")
 		return
@@ -826,10 +863,7 @@ func (s *Server) blocks(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 	out := []User{}
 	for rows.Next() {
-		var x User
-		var allow int
-		if rows.Scan(&x.ID, &x.Alias, &x.Campus, &x.Avatar, &allow, &x.CreatedAt, &x.Gender) == nil {
-			x.AllowDM = allow != 0
+		if x, e := scanUser(rows); e == nil {
 			out = append(out, x)
 		}
 	}

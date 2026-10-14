@@ -1,6 +1,6 @@
 {
   "name": "sayanything-qa",
-  "version": "1.4.2",
+  "version": "1.5.0",
   "private": true,
   "description": "sayAnything campus anonymous chat UI and website validation",
   "scripts": {

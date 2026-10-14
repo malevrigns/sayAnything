@@ -4,6 +4,7 @@ import 'api.dart';
 import 'design.dart';
 import 'nearby.dart';
 import 'profile_fields.dart';
+import 'policy.dart';
 import 'feed.dart';
 
 class ProfilePage extends StatelessWidget {
@@ -88,6 +89,26 @@ class ProfilePage extends StatelessWidget {
               '性别',
               genderLabel(user['gender']),
               () => _gender(context),
+            ),
+            const SizedBox(height: 22),
+            const _GroupLabel('心动资料'),
+            _setting(
+              LucideIcons.quote,
+              '简介',
+              _bioValue(user),
+              () => _bio(context),
+            ),
+            _setting(
+              LucideIcons.graduationCap,
+              '年级',
+              api.policy.gradeLabel(user['grade']) ?? '未填写',
+              () => _grade(context),
+            ),
+            _setting(
+              LucideIcons.tags,
+              '标签',
+              _tagsValue(user),
+              () => _tags(context),
             ),
           ],
           if (settings) ...[
@@ -340,6 +361,267 @@ class ProfilePage extends StatelessWidget {
     } catch (e) {
       if (context.mounted) toast(context, e);
     }
+  }
+
+  static List<String> _userTags(Data? user) =>
+      (user?['tags'] as List? ?? const []).map((tag) => '$tag').toList();
+
+  static String _bioValue(Data user) {
+    final bio = '${user['bio'] ?? ''}'.trim();
+    return bio.isEmpty ? '未填写' : bio;
+  }
+
+  static String _tagsValue(Data user) {
+    final tags = _userTags(user);
+    return tags.isEmpty ? '未选择' : tags.join(' · ');
+  }
+
+  Future<void> _bio(BuildContext context) async {
+    final current = '${api.user?['bio'] ?? ''}'.trim();
+    final controller = TextEditingController(text: current);
+    final value = await showDialog<String>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('一句话简介'),
+        content: TextField(
+          controller: controller,
+          maxLength: api.policy.bioCharacters,
+          minLines: 1,
+          maxLines: 3,
+          autofocus: true,
+          keyboardType: TextInputType.text,
+          textInputAction: TextInputAction.done,
+          onSubmitted: (text) => Navigator.pop(c, text.trim()),
+          decoration: const InputDecoration(hintText: '一句话，介绍一下此刻的自己'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(c, controller.text.trim()),
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 250));
+    controller.dispose();
+    if (value == null || value == current) return;
+    try {
+      await api.updateUser({'bio': value});
+      if (context.mounted) toast(context, value.isEmpty ? '简介已清空' : '简介已更新');
+    } catch (e) {
+      if (context.mounted) toast(context, e);
+    }
+  }
+
+  Future<void> _grade(BuildContext context) async {
+    final grades = api.policy.grades;
+    final current = '${api.user?['grade'] ?? ''}';
+    final options = [
+      (value: '', label: '不填写'),
+      for (final grade in grades) (value: grade.id, label: grade.label),
+    ];
+    final value = await showDialog<String>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: .35),
+      builder: (dialog) => Dialog(
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        child: Glass(
+          strong: true,
+          radius: 28,
+          padding: const EdgeInsets.fromLTRB(24, 22, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      '年级',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: '关闭年级选择',
+                    onPressed: () => Navigator.pop(dialog),
+                    icon: const Icon(LucideIcons.x, size: 20),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                grades.isEmpty ? '当前校园服务还没有提供年级选项。' : '只展示你选择的资料，也可以不填写。',
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Colors.white60,
+                  height: 1.7,
+                ),
+              ),
+              // Four choices per bar keep labels readable on narrow phones.
+              for (var i = 0; i < options.length; i += 4) ...[
+                SizedBox(height: i == 0 ? 24 : 8),
+                GlassChoiceBar<String>(
+                  value: current,
+                  options: options.skip(i).take(4).toList(),
+                  onChanged: (value) => Navigator.pop(dialog, value),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+    if (value == null || value == current) return;
+    try {
+      await api.updateUser({'grade': value});
+      if (context.mounted) {
+        toast(context, value.isEmpty ? '年级已清除' : '年级资料已更新');
+      }
+    } catch (e) {
+      if (context.mounted) toast(context, e);
+    }
+  }
+
+  Future<void> _tags(BuildContext context) async {
+    final value = await showDialog<List<String>>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: .35),
+      builder: (_) =>
+          _TagPicker(policy: api.policy, initial: _userTags(api.user)),
+    );
+    if (value == null) return;
+    try {
+      await api.updateUser({'tags': value});
+      if (context.mounted) toast(context, value.isEmpty ? '标签已清空' : '标签已更新');
+    } catch (e) {
+      if (context.mounted) toast(context, e);
+    }
+  }
+}
+
+class _TagPicker extends StatefulWidget {
+  final AppPolicy policy;
+  final List<String> initial;
+  const _TagPicker({required this.policy, required this.initial});
+  @override
+  State<_TagPicker> createState() => _TagPickerState();
+}
+
+class _TagPickerState extends State<_TagPicker> {
+  late final Set<String> chosen = {...widget.initial};
+
+  @override
+  Widget build(BuildContext context) {
+    final policy = widget.policy;
+    final full = chosen.length >= policy.maxTags;
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+      child: Glass(
+        strong: true,
+        radius: 28,
+        padding: const EdgeInsets.fromLTRB(24, 22, 24, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    '兴趣标签',
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500),
+                  ),
+                ),
+                IconButton(
+                  tooltip: '关闭标签选择',
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(LucideIcons.x, size: 20),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              policy.tags.isEmpty
+                  ? '当前校园服务还没有提供标签。'
+                  : '最多选 ${policy.maxTags} 个，让心动更有方向。',
+              style: const TextStyle(
+                fontSize: 13,
+                color: Colors.white60,
+                height: 1.7,
+              ),
+            ),
+            if (policy.tags.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final tag in policy.tags)
+                    FilterChip(
+                      label: Text(tag),
+                      labelStyle: TextStyle(
+                        color: chosen.contains(tag)
+                            ? Colors.white
+                            : Colors.white60,
+                      ),
+                      selected: chosen.contains(tag),
+                      showCheckmark: false,
+                      onSelected: full && !chosen.contains(tag)
+                          ? null
+                          : (selected) => setState(() {
+                              if (selected) {
+                                chosen.add(tag);
+                              } else {
+                                chosen.remove(tag);
+                              }
+                            }),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '已选 ${chosen.length} / ${policy.maxTags}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.white38,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('取消'),
+                  ),
+                  const SizedBox(width: 4),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(
+                      context,
+                      policy.tags.where(chosen.contains).toList(),
+                    ),
+                    child: const Text('保存'),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 }
 

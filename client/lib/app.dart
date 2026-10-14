@@ -7,6 +7,7 @@ import 'feed.dart';
 import 'chat.dart';
 import 'profile.dart';
 import 'nearby.dart';
+import 'discover.dart';
 import 'page_activity.dart';
 
 class SayAnythingApp extends StatefulWidget {
@@ -374,7 +375,7 @@ class HomeShell extends StatefulWidget {
 }
 
 class _HomeShellState extends State<HomeShell> {
-  static const labels = ['动态', '聊天', '附近', '我'];
+  static const labels = ['动态', '心动', '聊天', '附近', '我'];
   int tab = 0, revision = 0;
   final _visited = <int>{0};
   final _pages = <int, Widget>{};
@@ -446,9 +447,11 @@ class _HomeShellState extends State<HomeShell> {
             ),
           ),
         ),
-        1 => InboxPage(api: widget.api, onNew: () => selectTab(0)),
-        2 => NearbyPage(api: widget.api, embedded: true),
-        _ => ProfilePage(api: widget.api),
+        1 => DiscoverPage(api: widget.api, embedded: true),
+        2 => InboxPage(api: widget.api, onNew: () => selectTab(0)),
+        3 => NearbyPage(api: widget.api, embedded: true),
+        4 => ProfilePage(api: widget.api),
+        _ => throw StateError('unknown tab $index'),
       },
     ),
   );
@@ -551,6 +554,7 @@ class _HomeShellState extends State<HomeShell> {
                                     Icon(
                                       [
                                         LucideIcons.newspaper,
+                                        LucideIcons.heart,
                                         LucideIcons.messageCircle,
                                         LucideIcons.mapPin,
                                         LucideIcons.userRound,

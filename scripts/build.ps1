@@ -1,4 +1,4 @@
-param([switch]$Android, [switch]$Windows, [string]$ApiUrl = '')
+param([switch]$Android, [switch]$Windows, [string]$ApiUrl = '', [switch]$Online)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $dist = Join-Path $projectRoot 'dist'
@@ -19,7 +19,9 @@ try {
   $buildArgs = @()
   if ($ApiUrl) { $buildArgs += "--dart-define=API_URL=$ApiUrl" }
   if ($Android) {
-    & (Join-Path $PSScriptRoot 'build-android-release.ps1') -ApiUrl $ApiUrl
+    # Gradle dependency caches may be empty on a fresh machine; -Online lets the
+    # Android script download them instead of failing under --offline.
+    & (Join-Path $PSScriptRoot 'build-android-release.ps1') -ApiUrl $ApiUrl -Online:$Online
     if ($LASTEXITCODE -ne 0) { throw 'APK build failed' }
   }
   if ($Windows) {

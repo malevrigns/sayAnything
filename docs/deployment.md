@@ -68,7 +68,7 @@ if ($report) {
 
 | 方法与路径 | 请求/行为 |
 | --- | --- |
-| GET /config | 无需登录；Go 提供分类、文字上限、媒体格式与数量/大小限制，客户端只用作显示和输入提示 |
+| GET /config | 无需登录；Go 提供分类、文字上限、媒体格式与数量/大小限制，以及 profile（简介字数、标签数、标签、年级）与 discover（每日心动额度），客户端只用作显示和输入提示 |
 | POST /session | `{campus}` → `{token,user}` |
 | POST /media | multipart 单个 `file`；可带 `X-Upload-Id` 幂等键，返回媒体对象 |
 | POST /media/{id}/ticket | 获取 15 分钟临时访问链接 `{url,expiresAt}` |
@@ -78,8 +78,12 @@ if ($report) {
 | PUT /nearby/location | `{latitude,longitude,revision}`；仅用于用户主动开启或更新位置 |
 | DELETE /nearby/location | 关闭展示并递增版本，返回 204；即使原本关闭也会使旧请求失效 |
 | POST /nearby/{id}/greet | `{}`；事务中检查位置、权限、屏蔽、每日限额，返回私聊 DTO |
+| GET /discover | 可选 `gender=male / female`；同校、允许私聊、未屏蔽、未滑过的候选最多 20 张，先排喜欢过我的人；返回 `{items,likesMe,likesLeft}`，不返回坐标 |
+| POST /discover/{id}/swipe | `{action:"like" / "pass"}`；like 需本人允许私聊，额度用尽返回 429；互相心动返回 `{matched:true,conversation}`，否则 `{matched:false}` |
+| GET /discover/likes | 喜欢我且我尚未回应的人，字段与候选卡片相同，最新在前 |
+| GET /discover/matches | 配对列表 `{id,alias,avatar,conversationId,matchedAt}` |
 | GET /me | 当前匿名身份 |
-| PATCH /me | `{alias?,allowDM?,gender?}`；gender 为 male / female / undisclosed，默认 undisclosed |
+| PATCH /me | `{alias?,allowDM?,gender?,bio?,grade?,tags?}`；gender 为 male / female / undisclosed，默认 undisclosed；bio ≤120 字、grade 取年级 id、tags ≤5 且取自标签列表，空值清除该字段 |
 | DELETE /me | 永久删除身份与其内容 |
 | GET /posts | `category`、`q`、`saved=1`、`mine=1` 可组合 |
 | POST /posts | `{body,category}` |
@@ -115,11 +119,15 @@ if ($report) {
 
 附近默认关闭，只存当前网格位置，不建立轨迹表。展示 30 分钟到期，接口立即过滤过期记录，后台每分钟清理。用户关闭私聊或主动关闭附近时，Go 同时清除位置并递增持久化 revision。客户端须使用最近读取的版本提交 PUT，旧版本返回 409，防止超时迟到的请求重新开启展示。资料 PATCH 在事务中读取最新记录，仅应用提交的字段。
 
+心动匹配与附近共享同一套可见性：候选必须同校园、允许私聊、与当前身份无相互屏蔽，且当前身份尚未对其滑动；喜欢过我且我已回应过的人不再出现在候选或「喜欢我」列表中。响应不返回坐标或精确距离，仅在双方都有未过期的大致网格位置且距离不足约 5 公里时，附上与附近一致的距离区间，其余情况省略该字段。简介沿用 Unicode 字符计数最多 120 字，年级取自服务端枚举（大一至大四），兴趣标签最多 5 个且只能从服务端列表中选择；三者与性别一样可在「我」页留空以清除，PATCH 在事务内只合并提交的字段。
+
+候选先排喜欢过我的人，再排填写了简介或标签的人，其余按昵称固定顺序，不按活跃度排序；`likesMe` 为喜欢我且我尚未回应的人数，`likesLeft` 为今日剩余心动次数。心动（like）要求本人已开启接收私信，否则返回 403；跳过（pass）无此要求。每个身份每 UTC 日最多 50 次心动，超额返回 429；对同一目标重复提交同一动作按幂等回放处理，不写入新记录也不重复计额度。双方互相心动时，Go 在同一事务内创建配对记录与普通私聊会话，响应携带该会话的常规 DTO；重复请求不会产生第二段会话。跳过记录满 30 天后清理，使错过的人可再次出现；额度记录按日清理，删除身份会级联清理滑动记录、配对与额度。心动匹配接口自 Go 1.5 起提供，数据库迁移只新增列与表，不改动既有数据。
+
 打招呼仅允许双方开启附近、允许私聊、同校园、网格距离约 5 公里内且无屏蔽关系。创建消息、配额记录与会话在同一事务中完成。首次招呼内容固定，每个发送方每天最多 10 个新招呼；既有会话直接复用，不新增消息和配额记录。删除身份同时清理位置与招呼配额。
 
 其他公共接口没有 `/api/v1` 前缀：`GET /health`、`GET /api/downloads`。下载只允许 `sayanything-android.apk`、`sayanything-android-arm64.apk`、`sayanything-android-armv7.apk`、`sayanything-android-x64.apk` 和 `sayanything-windows.zip`，不开放任意目录浏览。官网读取下载状态；文件不存在时禁用链接。
 
-1.3 的搜索使用服务端 Unicode 小写转换与字面子串匹配，`%` 和 `_` 不作为通配符。结果限制为最近 200 个匹配会话，摘要最多 160 个 Unicode 字符；空 `q` 保持原会话列表契约。参与者范围与双方屏蔽关系在 Go 中检查。升级时先部署 Go，再升级客户端；配置值与写入校验共用 `server/policy.go` 中的定义。
+搜索使用服务端 Unicode 小写转换与字面子串匹配，`%` 和 `_` 不作为通配符。结果限制为最近 200 个匹配会话，摘要最多 160 个 Unicode 字符；空 `q` 保持原会话列表契约。参与者范围与双方屏蔽关系在 Go 中检查。升级时先部署 Go，再升级客户端；配置值与写入校验共用 `server/policy.go` 中的定义。
 
 ## 安卓正式签名
 
