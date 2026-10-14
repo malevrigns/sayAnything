@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#f3eee4">
+<meta name="theme-color" content="#050606">
+<meta name="color-scheme" content="dark">
 <meta name="description" content="说点什么 SayAnything，一个属于校园的匿名交流空间。分享日常，找到共鸣，按自己的节奏开始一段对话。下载 Android 与 Windows 客户端。">
 <title>说点什么 SayAnything — 有些话，只想在这里说。</title>
 <link rel="icon" href="./assets/icons/messages-square.svg" type="image/svg+xml">
@@ -17,7 +18,7 @@
 <header class="site-header">
   <div class="wrap header-inner">
     <a class="brand" href="#" aria-label="说点什么首页">
-      <img class="brand-icon" src="./assets/icons/messages-square.svg" width="28" height="28" alt="">
+      <span class="ico ico-msgs brand-icon" aria-hidden="true"></span>
       <span class="brand-text">说点什么</span>
       <small>SayAnything</small>
     </a>
@@ -27,89 +28,92 @@
       <a href="#privacy">匿名与边界</a>
       <a class="nav-download" href="#download">下载</a>
     </nav>
-    <a class="btn btn-ink btn-sm header-cta" href="#download">下载客户端<img class="icon invert" src="./assets/icons/arrow-up-right.svg" alt=""></a>
+    <a class="btn btn-line btn-sm header-cta" href="#download">下载客户端<span class="ico ico-go" aria-hidden="true"></span></a>
     <button class="menu-btn" id="mobile-menu" type="button" aria-label="展开导航" aria-controls="main-nav" aria-expanded="false">
-      <img class="icon" src="./assets/icons/menu.svg" alt="">
+      <span class="ico ico-menu" aria-hidden="true"></span>
     </button>
   </div>
 </header>
 
 <main id="main">
-  <!-- HERO -->
-  <section class="hero wrap" aria-labelledby="hero-title">
+  <!-- HERO · the loop video is the engine; the page only frames it -->
+  <section class="hero" aria-labelledby="hero-title">
     <img class="hero-photo" src="./assets/hero-graduation.webp" width="2200" height="1467" alt="夕阳下，毕业生在草地上抛起学士帽" fetchpriority="high">
     <video class="hero-video" autoplay muted loop playsinline preload="metadata" poster="./assets/video/hero-poster.jpg" aria-hidden="true" tabindex="-1"><source src="./assets/video/hero-loop.mp4" type="video/mp4"></video>
     <div class="hero-veil" aria-hidden="true"></div>
-    <div class="hero-grid">
+    <div class="hero-hud" aria-hidden="true"></div>
+    <div class="wrap hero-grid">
       <div class="hero-copy">
         <p class="eyebrow"><span class="dot" aria-hidden="true"></span>一个属于校园的匿名交流空间</p>
         <h1 id="hero-title">有些话，<br>只想<span class="accent">在这里说。</span></h1>
         <p class="lede">不必准备一个完美的人设。<br>分享生活，交换心情，遇见一句刚刚好的「我也是」。<br>在熟悉的校园，认识真实的彼此。</p>
         <div class="hero-actions">
-          <a class="btn btn-clay" href="#download">开始新的对话<img class="icon" src="./assets/icons/arrow-up-right.svg" alt=""></a>
-          <a class="text-cta light" href="#experience">先看看这里<img class="icon invert" src="./assets/icons/arrow-down.svg" alt=""></a>
+          <a class="btn btn-signal" href="#download">开始新的对话<span class="ico ico-go" aria-hidden="true"></span></a>
+          <a class="text-cta" href="#experience">先看看这里<span class="ico ico-down" aria-hidden="true"></span></a>
         </div>
       </div>
       <aside class="hero-aside" aria-hidden="true">
         <span class="hero-rail">A LITTLE LESS FILTERED.</span>
       </aside>
     </div>
-    <div class="hero-foot">
-      <span class="serif-tag">Less labels. More you.</span>
+    <div class="wrap hero-foot">
+      <span class="hero-tag">Less labels. More you.</span>
       <a class="photo-credit" href="https://unsplash.com/photos/_kd5cxwZOK4" target="_blank" rel="noopener noreferrer">Photography: Pang Yuhao / Unsplash ↗</a>
     </div>
   </section>
 
-  <!-- VALUE PROPS -->
-  <section class="values wrap" aria-label="产品特点">
-    <article class="value-card">
-      <img class="icon" src="./assets/icons/lock-keyhole.svg" alt="">
-      <div>
-        <h2>匿名表达</h2>
-        <p>不必展示实名，用另一个名字说话</p>
-      </div>
-    </article>
-    <article class="value-card">
-      <img class="icon" src="./assets/icons/message-circle.svg" alt="">
-      <div>
-        <h2>同校交流</h2>
-        <p>让共鸣发生在熟悉的校园里</p>
-      </div>
-    </article>
-    <article class="value-card">
-      <img class="icon" src="./assets/icons/shield-check.svg" alt="">
-      <div>
-        <h2>自主边界</h2>
-        <p>按自己的节奏开始或结束对话</p>
-      </div>
-    </article>
-  </section>
-
-  <!-- ABOUT -->
-  <section class="about wrap reveal" id="about">
-    <div class="about-label">
-      <span class="kicker">01 · A SPACE TO BE YOURSELF</span>
-      <h2>校园里，也需要一个<br><em>卸下标签</em>的地方。</h2>
-    </div>
-    <div class="about-body">
-      <p>课表之外，绩点之外，朋友圈之外。<br>我们想留一个地方，给那个没有被定义的你。</p>
-      <p>可以认真聊聊，也可以只是随口一说。<br>不用很精彩，不用有答案，真实就已经足够。</p>
-      <a class="text-cta" href="#spaces">找到你的小角落<img class="icon" src="./assets/icons/arrow-right.svg" alt=""></a>
-    </div>
-  </section>
-
-  <!-- SPACES -->
-  <section class="spaces" id="spaces">
-    <div class="wrap">
-      <div class="section-head reveal">
+  <!-- VALUES · the readout docked under the hero -->
+  <section class="values" aria-label="产品特点">
+    <div class="wrap values-grid">
+      <article class="value-card">
+        <span class="ico ico-mask" aria-hidden="true"></span>
         <div>
-          <span class="kicker">02 · GOOD CONVERSATIONS START SMALL</span>
-          <h2>不用想好开场白。<br>日常，就是最好的话题。</h2>
+          <h2>匿名表达</h2>
+          <p>不必展示实名，用另一个名字说话</p>
         </div>
+      </article>
+      <article class="value-card">
+        <span class="ico ico-msg" aria-hidden="true"></span>
+        <div>
+          <h2>同校交流</h2>
+          <p>让共鸣发生在熟悉的校园里</p>
+        </div>
+      </article>
+      <article class="value-card">
+        <span class="ico ico-shield" aria-hidden="true"></span>
+        <div>
+          <h2>自主边界</h2>
+          <p>按自己的节奏开始或结束对话</p>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ABOUT · one statement, offset body -->
+  <section class="about sec" id="about">
+    <div class="wrap">
+      <p class="run-head" aria-hidden="true">A SPACE TO BE YOURSELF</p>
+      <div class="about-grid">
+        <h2 class="reveal">校园里，也需要一个<br><em>卸下标签</em>的地方。</h2>
+        <div class="about-body reveal">
+          <p>课表之外，绩点之外，朋友圈之外。<br>我们想留一个地方，给那个没有被定义的你。</p>
+          <p>可以认真聊聊，也可以只是随口一说。<br>不用很精彩，不用有答案，真实就已经足够。</p>
+          <a class="text-cta" href="#spaces">找到你的小角落<span class="ico ico-right" aria-hidden="true"></span></a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SPACES · photograph + three ways in -->
+  <section class="spaces sec" id="spaces">
+    <div class="wrap">
+      <p class="run-head" aria-hidden="true">GOOD CONVERSATIONS START SMALL</p>
+      <div class="section-head reveal">
+        <h2>不用想好开场白。<br>日常，就是最好的话题。</h2>
         <p class="section-aside">一些小事，一点心事。<br>还有一个，正在听的陌生人。</p>
       </div>
       <div class="spaces-grid">
-        <figure class="campus-card reveal">
+        <figure class="campus-card hud reveal">
           <img src="./assets/campus-courtyard.webp" width="1600" height="1096" loading="lazy" alt="大学庭院里的草坪与古老教学楼">
           <a class="photo-credit on-photo" href="https://unsplash.com/photos/d6ebY-faOO0" target="_blank" rel="noopener noreferrer">Vadim Sherbakov / Unsplash ↗</a>
           <figcaption>
@@ -117,135 +121,160 @@
             <span>课间十分钟，也可以有一场好对话。</span>
           </figcaption>
         </figure>
-        <div class="feature-stack reveal">
-          <article class="feature">
-            <span class="num">01</span>
+        <div class="feature-stack">
+          <article class="feature reveal">
+            <span class="feat-icon" aria-hidden="true"><span class="ico ico-msgs"></span></span>
             <div>
               <h3>那些普通的小事，也很值得。</h3>
               <p>食堂的新菜、回宿舍路上的晚霞、一节有趣的课。把校园生活的碎片，分享给同样身在其中的人。</p>
               <span class="chip">校园广场 · 分享 · 评论 · 收藏</span>
             </div>
-            <img class="icon feat-icon" src="./assets/icons/messages-square.svg" alt="">
           </article>
-          <article class="feature">
-            <span class="num">02</span>
+          <article class="feature reveal">
+            <span class="feat-icon" aria-hidden="true"><span class="ico ico-msg"></span></span>
             <div>
               <h3>说不出口的，慢慢说。</h3>
               <p>用另一个名字，说一点真实的心情。无需解释你是谁，也能得到一个认真的回应。</p>
               <span class="chip">匿名私聊 · 让心事有回声</span>
             </div>
-            <img class="icon feat-icon" src="./assets/icons/message-circle.svg" alt="">
           </article>
-          <article class="feature">
-            <span class="num">03</span>
+          <article class="feature reveal">
+            <span class="feat-icon" aria-hidden="true"><span class="ico ico-users"></span></span>
             <div>
               <h3>聊到一起，就坐近一点。</h3>
               <p>自习搭子、课间茶水间、耳机里的那首歌。走进一个同校话题房间，让对话自然开始。</p>
               <span class="chip">话题房间 · 找到同频的人</span>
             </div>
-            <img class="icon feat-icon" src="./assets/icons/users-round.svg" alt="">
           </article>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- APP PREVIEW -->
-  <section class="experience" id="experience">
-    <div class="wrap experience-grid">
-      <div class="experience-copy reveal">
-        <span class="kicker light">03 · YOUR CAMPUS, YOUR VOICE</span>
-        <h2>把世界的声音调小，<br>把自己的声音打开。<br><em class="serif-em">Say anything.</em></h2>
+  <!-- APP PREVIEW · the real screens on a tuning dial -->
+  <section class="experience sec" id="experience">
+    <div class="wrap">
+      <header class="experience-head reveal">
+        <span class="kicker">YOUR CAMPUS, YOUR VOICE</span>
+        <h2>把世界的声音调小，<br>把自己的声音打开。<br><em class="say">Say anything.</em></h2>
         <p>轻一点的界面，真一点的交流。让每一次打开，都回到聊天本身。</p>
-        <div class="preview-tabs" role="tablist" aria-label="App 界面预览">
-          <button type="button" role="tab" data-preview="chat" aria-selected="true" aria-controls="preview-panel" id="tab-chat">匿名私聊</button>
-          <button type="button" role="tab" data-preview="rooms" aria-selected="false" aria-controls="preview-panel" id="tab-rooms" tabindex="-1">话题房间</button>
-          <button type="button" role="tab" data-preview="square" aria-selected="false" aria-controls="preview-panel" id="tab-square" tabindex="-1">校园广场</button>
+      </header>
+      <div class="console">
+        <div class="console-tabs reveal">
+          <div class="preview-tabs" role="tablist" aria-label="App 界面预览">
+            <button type="button" role="tab" data-preview="chat" aria-selected="true" aria-controls="preview-panel" id="tab-chat"><span class="tab-idx" aria-hidden="true">01</span>匿名私聊</button>
+            <button type="button" role="tab" data-preview="rooms" aria-selected="false" aria-controls="preview-panel" id="tab-rooms" tabindex="-1"><span class="tab-idx" aria-hidden="true">02</span>话题房间</button>
+            <button type="button" role="tab" data-preview="square" aria-selected="false" aria-controls="preview-panel" id="tab-square" tabindex="-1"><span class="tab-idx" aria-hidden="true">03</span>校园广场</button>
+          </div>
         </div>
-        <div class="preview-desc" aria-live="polite">
-          <strong id="preview-title">从「我也是」，到「说说看」。</strong>
-          <span id="preview-body">一条让你共鸣的声音，就是认识另一个人的开始。</span>
+        <div class="phone-stage reveal" id="preview-panel" role="tabpanel" aria-labelledby="tab-chat" data-channel="1">
+          <div class="orbit" aria-hidden="true">
+            <span class="orbit-glow"></span>
+            <span class="orbit-ring"></span>
+            <span class="orbit-dial">
+              <span class="ch" style="--n:0"><span>CH 01</span></span>
+              <span class="ch" style="--n:1"><span>CH 02</span></span>
+              <span class="ch" style="--n:2"><span>CH 03</span></span>
+            </span>
+            <span class="orbit-pointer"></span>
+          </div>
+          <figure class="screen hud">
+            <div class="screen-clip">
+              <img id="preview-image" src="./assets/app-chat.png" width="390" height="844" loading="lazy" alt="说点什么匿名私聊的实际运行截图">
+              <span class="scan" aria-hidden="true"></span>
+            </div>
+          </figure>
+          <span class="stage-label" aria-hidden="true">BUILT FOR REAL CONVERSATIONS</span>
+          <span class="preview-counter"><b id="preview-count">01</b> / 03</span>
         </div>
-        <p class="experience-note"><img class="icon invert soft" src="./assets/icons/smartphone.svg" alt="">App 实际运行界面 · 展示内容为测试数据</p>
-      </div>
-      <div class="phone-stage reveal" id="preview-panel" role="tabpanel" aria-labelledby="tab-chat">
-        <span class="stage-label" aria-hidden="true">BUILT FOR REAL CONVERSATIONS</span>
-        <div class="phone phone-main">
-          <div class="phone-notch" aria-hidden="true"></div>
-          <img id="preview-image" src="./assets/app-chat.png" width="390" height="844" loading="lazy" alt="说点什么匿名私聊的实际运行截图">
+        <div class="console-side reveal">
+          <div class="preview-desc" aria-live="polite">
+            <strong id="preview-title">从「我也是」，到「说说看」。</strong>
+            <span id="preview-body">一条让你共鸣的声音，就是认识另一个人的开始。</span>
+          </div>
+          <p class="experience-note"><span class="ico ico-phone" aria-hidden="true"></span>App 实际运行界面 · 展示内容为测试数据</p>
         </div>
-        <div class="phone phone-back" aria-hidden="true">
-          <img src="./assets/app-rooms.png" width="390" height="844" loading="lazy" alt="">
-        </div>
-        <span class="preview-counter"><b id="preview-count">01</b> / 03</span>
       </div>
     </div>
   </section>
 
   <!-- PRIVACY / FAQ -->
-  <section class="privacy wrap" id="privacy">
-    <div class="privacy-intro reveal">
-      <span class="kicker">04 · FREEDOM, WITH BOUNDARIES</span>
-      <h2>自由说话，<br>也温柔相待。</h2>
-      <p>好的交流，从尊重彼此开始。关于匿名，我们也想坦诚一点。</p>
-    </div>
-    <div class="faq reveal">
-      <details open>
-        <summary>别人能看到我的真实身份吗？<img class="icon" src="./assets/icons/plus.svg" alt=""></summary>
-        <p>无需填写真实姓名或手机号，其他人看到的是你的匿名昵称。匿名面向其他用户；服务运营方可以访问服务器保存的内容，私聊不是端到端加密，请保护好个人信息。</p>
-      </details>
-      <details>
-        <summary>可以只和同校的人聊天吗？<img class="icon" src="./assets/icons/plus.svg" alt=""></summary>
-        <p>可以。广场、话题房间和私聊都按学校隔离。当前学校由用户自行选择，尚未接入学生身份认证，请使用学校全称加入对应校园。</p>
-      </details>
-      <details>
-        <summary>不想继续聊了，该怎么办？<img class="icon" src="./assets/icons/plus.svg" alt=""></summary>
-        <p>你可以随时关闭私聊、屏蔽对方或举报不当内容，也可以删除自己的匿名身份与发布内容。继续或停止，都由你决定。</p>
-      </details>
-      <details>
-        <summary>下载后，怎么开始使用？<img class="icon" src="./assets/icons/plus.svg" alt=""></summary>
-        <p>安装 Android 或 Windows 客户端，在连接设置中填写校园服务地址，选择学校并阅读社区约定后即可加入。本机服务地址和真机连接步骤见项目随附的使用说明。</p>
-      </details>
+  <section class="privacy sec" id="privacy">
+    <div class="wrap">
+      <p class="run-head" aria-hidden="true">FREEDOM, WITH BOUNDARIES</p>
+      <div class="privacy-grid">
+        <div class="privacy-intro reveal">
+          <h2>自由说话，<br>也温柔相待。</h2>
+          <p>好的交流，从尊重彼此开始。关于匿名，我们也想坦诚一点。</p>
+        </div>
+        <div class="faq reveal">
+          <details open>
+            <summary>别人能看到我的真实身份吗？<span class="faq-mark" aria-hidden="true"><span class="ico ico-plus"></span></span></summary>
+            <p>无需填写真实姓名或手机号，其他人看到的是你的匿名昵称。匿名面向其他用户；服务运营方可以访问服务器保存的内容，私聊不是端到端加密，请保护好个人信息。</p>
+          </details>
+          <details>
+            <summary>可以只和同校的人聊天吗？<span class="faq-mark" aria-hidden="true"><span class="ico ico-plus"></span></span></summary>
+            <p>可以。广场、话题房间和私聊都按学校隔离。当前学校由用户自行选择，尚未接入学生身份认证，请使用学校全称加入对应校园。</p>
+          </details>
+          <details>
+            <summary>不想继续聊了，该怎么办？<span class="faq-mark" aria-hidden="true"><span class="ico ico-plus"></span></span></summary>
+            <p>你可以随时关闭私聊、屏蔽对方或举报不当内容，也可以删除自己的匿名身份与发布内容。继续或停止，都由你决定。</p>
+          </details>
+          <details>
+            <summary>下载后，怎么开始使用？<span class="faq-mark" aria-hidden="true"><span class="ico ico-plus"></span></span></summary>
+            <p>安装 Android 或 Windows 客户端，在连接设置中填写校园服务地址，选择学校并阅读社区约定后即可加入。本机服务地址和真机连接步骤见项目随附的使用说明。</p>
+          </details>
+        </div>
+      </div>
     </div>
   </section>
 
   <!-- DOWNLOAD -->
-  <section class="download wrap reveal" id="download">
-    <div class="download-panel">
-      <div class="download-copy">
-        <span class="kicker light">YOUR NEXT CONVERSATION STARTS HERE</span>
-        <h2>从一句「你好」开始。</h2>
-        <p>没有标准答案的地方，欢迎真实的你。</p>
-      </div>
-      <div class="download-actions">
-        <a class="btn btn-clay btn-dl" id="android-download" href="./downloads/sayanything-android.apk" download>
-          <img class="icon" src="./assets/icons/smartphone.svg" alt="">
-          <span>Android<small>安卓安装包 · 检查中</small></span>
-          <img class="icon" src="./assets/icons/arrow-up-right.svg" alt="">
-        </a>
-        <a class="btn btn-paper btn-dl" id="windows-download" href="./downloads/sayanything-windows.zip" download>
-          <img class="icon" src="./assets/icons/monitor.svg" alt="">
-          <span>Windows<small>桌面客户端 · 检查中</small></span>
-          <img class="icon" src="./assets/icons/arrow-up-right.svg" alt="">
-        </a>
-      </div>
-      <p class="download-status" id="download-status" role="status">正在检查安装包是否已发布…</p>
-      <div class="download-variants">
-        <p>64 位版适合大多数近年的安卓手机。需要兼容旧设备时，可选择通用版。</p>
-        <div>
-          <a data-download-platform="android" href="./downloads/sayanything-android.apk" download>安卓通用兼容版</a>
-          <a data-download-platform="androidArmv7" href="./downloads/sayanything-android-armv7.apk" download>安卓 32 位版</a>
-          <a data-download-platform="androidX64" href="./downloads/sayanything-android-x64.apk" download>x86_64 模拟器版</a>
+  <section class="download sec" id="download">
+    <div class="wrap">
+      <div class="download-panel hud reveal">
+        <div class="download-fx" aria-hidden="true"><span class="spot"></span></div>
+        <div class="download-copy">
+          <span class="kicker">YOUR NEXT CONVERSATION STARTS HERE</span>
+          <h2>从一句<span class="nb">「你好」</span>开始。</h2>
+          <p>没有标准答案的地方，欢迎真实的你。</p>
+        </div>
+        <div class="download-side">
+          <div class="download-actions">
+            <a class="btn btn-signal btn-dl" id="android-download" href="./downloads/sayanything-android.apk" download>
+              <span class="ico ico-phone" aria-hidden="true"></span>
+              <span>Android<small>安卓安装包 · 检查中</small></span>
+              <span class="ico ico-go" aria-hidden="true"></span>
+            </a>
+            <a class="btn btn-line btn-dl" id="windows-download" href="./downloads/sayanything-windows.zip" download>
+              <span class="ico ico-desk" aria-hidden="true"></span>
+              <span>Windows<small>桌面客户端 · 检查中</small></span>
+              <span class="ico ico-go" aria-hidden="true"></span>
+            </a>
+          </div>
+          <p class="download-status" id="download-status" role="status">正在检查安装包是否已发布…</p>
+        </div>
+        <div class="download-variants">
+          <p>64 位版适合大多数近年的安卓手机。需要兼容旧设备时，可选择通用版。</p>
+          <div>
+            <a data-download-platform="android" href="./downloads/sayanything-android.apk" download>安卓通用兼容版</a>
+            <a data-download-platform="androidArmv7" href="./downloads/sayanything-android-armv7.apk" download>安卓 32 位版</a>
+            <a data-download-platform="androidX64" href="./downloads/sayanything-android-x64.apk" download>x86_64 模拟器版</a>
+          </div>
         </div>
       </div>
+      <div class="wordmark scan-reveal" aria-hidden="true">
+        <span class="wm-base">Say<b>Anything</b><i>.</i></span>
+        <span class="wm-window"><span class="wm-fill">Say<b>Anything</b><i>.</i></span></span>
+        <span class="wm-scan"></span>
+      </div>
     </div>
-    <p class="wordmark" aria-hidden="true">Say<span>Anything.</span></p>
   </section>
 </main>
 
 <footer class="site-footer">
   <div class="wrap footer-inner">
-    <span>© 2026 SAYANYTHING · LESS LABELS. MORE YOU.</span>
+    <span class="footer-copy">© 2026 SAYANYTHING · LESS LABELS. MORE YOU.</span>
     <div class="footer-links">
       <a href="#privacy">匿名与隐私</a>
       <button type="button" id="credits-open">素材来源</button>
@@ -257,7 +286,7 @@
 <dialog id="credits-dialog" aria-labelledby="credits-title">
   <div class="dialog-top">
     <h2 id="credits-title">素材来源</h2>
-    <button type="button" id="credits-close" aria-label="关闭素材来源"><img class="icon" src="./assets/icons/x.svg" alt=""></button>
+    <button type="button" id="credits-close" aria-label="关闭素材来源"><span class="ico ico-x" aria-hidden="true"></span></button>
   </div>
   <ul class="credits-list">
     <li><strong>首屏摄影 · Pang Yuhao</strong><a href="https://unsplash.com/photos/_kd5cxwZOK4" target="_blank" rel="noopener noreferrer">在 Unsplash 查看原作 ↗</a></li>

@@ -17,6 +17,11 @@ export const HEX = {
   paper: '#f3eee4',
   cream: '#faf6ee',
   lime: '#dce8a8',
+  // Signal (black tech) register: near-black void, cool silver particles,
+  // one electric lime accent derived from the brand lime.
+  void: '#020303',
+  silver: '#dfe6f1',
+  electric: '#c9f25a',
 } as const;
 
 export const linear = (hex: string, intensity = 1): THREE.Color =>

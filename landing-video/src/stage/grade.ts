@@ -18,6 +18,9 @@ export const GradeShader = {
     uSaturation: { value: 1.1 },
     uShadowTint: { value: new THREE.Vector3(-0.004, 0.006, 0.003) },
     uHighlightTint: { value: new THREE.Vector3(0.016, 0.006, -0.01) },
+    // 1 = keep true blacks clean: no grain or dither where the frame is black,
+    // so a black page around the video matches and the encoder spends no bits there.
+    uCleanBlacks: { value: 0 },
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -28,7 +31,7 @@ export const GradeShader = {
   fragmentShader: /* glsl */ `
     uniform sampler2D tDiffuse;
     uniform vec2 uResolution;
-    uniform float uExposure, uSeed, uGrain, uVignette, uAberration, uPower, uSaturation;
+    uniform float uExposure, uSeed, uGrain, uVignette, uAberration, uPower, uSaturation, uCleanBlacks;
     uniform vec3 uShadowTint, uHighlightTint;
     varying vec2 vUv;
 
@@ -91,9 +94,10 @@ export const GradeShader = {
       vec2 fc = gl_FragCoord.xy;
       float grain = hash12(fc + uSeed * vec2(17.13, 91.71)) + hash12(fc * 1.618 + uSeed * vec2(53.17, 11.93)) - 1.0;
       float lo = dot(outColor, LUMA);
-      outColor += grain * uGrain * (0.45 + 2.2 * lo * (1.0 - lo));
+      float blackGate = mix(1.0, smoothstep(0.006, 0.05, lo), uCleanBlacks);
+      outColor += grain * uGrain * mix(0.45 + 2.2 * lo * (1.0 - lo), 2.4 * lo * (1.0 - lo), uCleanBlacks) * blackGate;
       float dither = hash12(fc + uSeed * vec2(3.71, 7.37)) - hash12(fc * 0.731 + uSeed * vec2(9.13, 1.97));
-      outColor += dither / 255.0;
+      outColor += dither / 255.0 * blackGate;
       gl_FragColor = vec4(outColor, 1.0);
     }`,
 };
