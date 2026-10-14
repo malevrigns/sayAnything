@@ -65,6 +65,8 @@ const videoState = (page) =>
       assert.equal(b.paused, false, `${name}: video is playing`);
       assert(b.currentTime > a.currentTime, `${name}: currentTime advances (${a.currentTime} -> ${b.currentTime})`);
       assert.equal(b.display, 'block', `${name}: video displayed`);
+      const creditWhilePlaying = await page.locator('.hero-foot .photo-credit').evaluate((e) => getComputedStyle(e).visibility);
+      assert.equal(creditWhilePlaying, 'hidden', `${name}: photo credit hidden while the generated video covers the photo`);
       assert.equal(
         await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
         false,
@@ -91,8 +93,10 @@ const videoState = (page) =>
         await page.locator('.hero-photo').evaluate((e) => e.complete && e.naturalWidth >= 1600),
         `${name}: photo visible under reduced motion`
       );
+      const creditWithPhoto = await page.locator('.hero-foot .photo-credit').evaluate((e) => getComputedStyle(e).visibility);
+      assert.equal(creditWithPhoto, 'visible', `${name}: photo credit shown with the photo`);
       assert.deepEqual(errors, [], `${name}: no page errors`);
-      results.push(`${name} ${viewport.width}x${viewport.height}: readyState=${a.readyState}, playing, t ${a.currentTime.toFixed(2)}→${b.currentTime.toFixed(2)}, reduced-motion display=${rm.display} paused=${rm.paused}`);
+      results.push(`${name} ${viewport.width}x${viewport.height}: readyState=${a.readyState}, playing, t ${a.currentTime.toFixed(2)}→${b.currentTime.toFixed(2)}, reduced-motion display=${rm.display} paused=${rm.paused}, credit ${creditWhilePlaying}→${creditWithPhoto}`);
       await page.close();
     }
 

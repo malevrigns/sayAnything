@@ -209,6 +209,7 @@ img{max-width:100%;display:block}
   color:rgba(255,255,255,.72);
 }
 .photo-credit:hover{color:#fff}
+.hero.is-video .hero-foot .photo-credit{visibility:hidden}
 .photo-credit.on-photo{
   position:absolute;top:16px;right:16px;z-index:2;
   text-shadow:0 1px 6px rgba(0,0,0,.45);
@@ -575,6 +576,7 @@ body.motion-ready .reveal.is-visible{opacity:1;transform:none}
   .about h2,.section-head h2,.experience-copy h2,.privacy-intro h2{letter-spacing:-.6px}
   .phone-main{width:210px;margin-top:8px}
   .phone-back{width:160px;top:8px}
+  .hero-video{object-position:72% 50%}
   .download-panel{padding:28px 20px 22px;border-radius:14px}
   .wordmark{font-size:clamp(44px,14vw,64px);letter-spacing:-3px;margin-top:28px}
   .footer-inner{flex-direction:column;align-items:flex-start;gap:12px;padding:18px 0}

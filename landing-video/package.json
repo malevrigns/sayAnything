@@ -5,14 +5,12 @@
   "description": "Generated hero background loop for the sayAnything website (Remotion + three.js)",
   "scripts": {
     "preview": "remotion studio",
-    "render:hero": "remotion render HeroLoop out/hero-loop.mp4 --codec h264 --crf 24",
-    "render:poster": "remotion still HeroLoop out/hero-poster.jpg --frame 0 --image-format jpeg --jpeg-quality 80",
+    "render:hero": "remotion render HeroLoop out/hero-loop.mp4",
+    "render:poster": "remotion still HeroLoop out/hero-poster.jpg --frame 0 --image-format jpeg --jpeg-quality 88",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@react-three/fiber": "9.8.1",
     "@remotion/cli": "4.0.535",
-    "@remotion/three": "4.0.535",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "remotion": "4.0.535",

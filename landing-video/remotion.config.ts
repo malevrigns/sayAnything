@@ -1,14 +1,18 @@
 import { Config } from '@remotion/cli/config';
 
-// Entry point so `remotion render HeroLoop out/...` works without repeating it.
 Config.setEntryPoint('src/index.ts');
 
-// OpenGL backend for headless Chromium. 'angle' is the default choice; if a
-// machine cannot render with it, switch to 'swiftshader' (pure software) —
-// or pass `--gl swiftshader` on the command line, which overrides this file.
+// Hardware OpenGL through ANGLE. If a machine cannot create a WebGL2 context
+// with it, pass `--gl swiftshader` (software, much slower).
 Config.setChromiumOpenGlRenderer('angle');
 
-// JPEG frames are much faster to capture/encode than PNG; the clip has no alpha.
-Config.setVideoImageFormat('jpeg');
+// Lossless PNG frames: the clip is mostly dark gradients, and JPEG frames
+// would add blocking before H.264 compresses them again.
+Config.setVideoImageFormat('png');
 
+Config.setCodec('h264');
+Config.setPixelFormat('yuv420p');
+Config.setColorSpace('bt709');
+Config.setCrf(20);
+Config.setX264Preset('slow');
 Config.setOverwriteOutput(true);

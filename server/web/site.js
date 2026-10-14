@@ -180,9 +180,13 @@ if (heroVideo && heroSection) {
     heroVideo.pause();
   } else {
     let heroVisible = true;
+    // While the generated loop is on screen the photograph is hidden, so its
+    // credit is too (it stays in the 素材来源 dialog and returns with the photo).
+    heroVideo.addEventListener('playing', () => heroSection.classList.add('is-video'));
     const hideHeroVideo = () => {
       heroVideo.pause();
       heroVideo.style.display = 'none';
+      heroSection.classList.remove('is-video');
     };
     const syncHeroVideo = () => {
       if (heroVideo.style.display === 'none') return;

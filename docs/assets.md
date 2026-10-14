@@ -20,4 +20,4 @@ Lucide SVG 保留原始文件，授权说明在 `server/web/assets/lucide-LICENS
 
 1.4 视频封面由实际上传的视频抽帧，不使用 AI 图片。Windows 服务端测试工具通过 [FFmpeg 官方下载页](https://ffmpeg.org/download.html) 指向的 [Gyan 构建站](https://www.gyan.dev/ffmpeg/builds/) 获取，下载 SHA-256 已核对；工具保留在本机 `.tools/ffmpeg`，不上传 Git、不打包进 APK。位置能力使用 [geolocator](https://pub.dev/packages/geolocator)，Android 仅声明大致位置权限，使用前由用户明确开启。
 
-官网首屏背景视频 `server/web/assets/video/hero-loop.mp4` 与封面 `hero-poster.jpg` 由本仓库 `landing-video/`（Remotion + three.js）程序化生成，不含任何第三方影像素材；渲染参数：合成 `HeroLoop` 1920×1080、30 fps、360 帧（12 s 无缝循环），`remotion render --codec h264 --crf 24`，封面为第 0 帧 JPEG（质量 80），Chromium OpenGL 后端 `angle`。
+官网首屏背景视频 `server/web/assets/video/hero-loop.mp4` 与封面 `hero-poster.jpg` 由本仓库 `landing-video/`（Remotion 驱动 three.js）逐帧生成，不含任何第三方影像素材。渲染参数：合成 `HeroLoop` 1920×1080、30 fps、450 帧（15 s 无缝循环），PNG 帧，H.264 crf 20、x264 preset slow、yuv420p、bt709 色彩标记；封面为第 0 帧 JPEG（质量 88）；Chromium OpenGL 后端 `angle`。视频播放时首屏摄影被遮住，其署名随之隐藏，仍保留在「素材来源」对话框中；减少动画或视频无法播放时，照片与署名一起显示。
