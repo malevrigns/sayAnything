@@ -89,12 +89,51 @@
     </div>
   </section>
 
-  <!-- ABOUT · one statement, offset body -->
+  <!-- ABOUT · statement, with a live instrument in the black -->
   <section class="about sec" id="about">
+    <div class="about-stage" aria-hidden="true">
+      <div class="about-gridfield"></div>
+      <div class="about-wash"></div>
+      <div class="about-beam"></div>
+      <div class="about-rig">
+        <div class="about-dial"></div>
+        <div class="about-dial about-dial-major"></div>
+        <svg class="about-schematic" viewBox="0 0 640 640">
+          <defs>
+            <radialGradient id="about-core" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#c8f05f" stop-opacity=".34"/>
+              <stop offset="42%" stop-color="#c8f05f" stop-opacity=".08"/>
+              <stop offset="78%" stop-color="#c8f05f" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <circle cx="320" cy="320" r="210" fill="url(#about-core)"/>
+          <circle cx="320" cy="320" r="236" stroke="rgba(238,240,234,.42)" stroke-width="1.4"/>
+          <circle cx="320" cy="320" r="164" stroke="rgba(238,240,234,.62)" stroke-width="1.4"/>
+          <circle class="about-arc" cx="320" cy="320" r="164"/>
+          <circle class="about-arc about-arc-2" cx="320" cy="320" r="236"/>
+          <circle cx="320" cy="320" r="96" stroke="rgba(238,240,234,.4)" stroke-width="1.2" stroke-dasharray="2 7"/>
+          <path class="about-frame" d="M78 126 V70 H134 M506 70 H562 V126 M562 514 V570 H506 M134 570 H78 V514"/>
+          <path d="M320 214 V250 M320 390 V426 M214 320 H250 M390 320 H426" stroke="rgba(238,240,234,.55)" stroke-width="1"/>
+          <circle cx="320" cy="320" r="3.5" fill="#c8f05f"/>
+          <g class="about-orbiter">
+            <circle cx="320" cy="84" r="13" stroke="#c8f05f" stroke-opacity=".45"/>
+            <circle cx="320" cy="84" r="3.5" fill="#c8f05f"/>
+          </g>
+        </svg>
+        <span class="about-tag about-tag-n">匿名</span>
+        <span class="about-tag about-tag-e">同校</span>
+        <span class="about-tag about-tag-s">无标签</span>
+      </div>
+    </div>
     <div class="wrap">
       <p class="run-head" aria-hidden="true">A SPACE TO BE YOURSELF</p>
       <div class="about-grid">
         <h2 class="reveal">校园里，也需要一个<br><em>卸下标签</em>的地方。</h2>
+        <ul class="about-meta">
+          <li><span class="about-pip" aria-hidden="true"></span>匿名昵称，不展示实名</li>
+          <li><span class="about-pip" aria-hidden="true"></span>广场和私聊都按学校隔开</li>
+          <li><span class="about-pip" aria-hidden="true"></span>可以自己开始，也可以自己结束</li>
+        </ul>
         <div class="about-body reveal">
           <p>课表之外，绩点之外，朋友圈之外。<br>我们想留一个地方，给那个没有被定义的你。</p>
           <p>可以认真聊聊，也可以只是随口一说。<br>不用很精彩，不用有答案，真实就已经足够。</p>

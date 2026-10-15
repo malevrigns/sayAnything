@@ -320,3 +320,27 @@ if (heroVideo && heroSection) {
     }
   }
 }
+
+/* —— About instrument: a few pixels of depth under a fine pointer. The rig's
+   own transform stays in CSS; `translate` is a separate property. —— */
+const aboutRig = document.querySelector('.about-rig');
+const aboutSection = document.querySelector('.about');
+if (aboutRig && aboutSection && FINE && !RM) {
+  let aboutFrame = 0;
+  let aboutX = 0;
+  let aboutY = 0;
+  const paintAbout = () => {
+    aboutFrame = 0;
+    aboutRig.style.translate = `${aboutX}px ${aboutY}px`;
+  };
+  aboutSection.addEventListener(
+    'pointermove',
+    (e) => {
+      const r = aboutSection.getBoundingClientRect();
+      aboutX = ((e.clientX - r.left) / r.width - 0.62) * -18;
+      aboutY = ((e.clientY - r.top) / r.height - 0.5) * -12;
+      if (!aboutFrame) aboutFrame = requestAnimationFrame(paintAbout);
+    },
+    { passive: true }
+  );
+}
